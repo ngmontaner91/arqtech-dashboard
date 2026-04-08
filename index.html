@@ -182,7 +182,7 @@ async function cargarDatos() {
     let offset = '';
     
     do {
-      const url = `https://api.airtable.com/v0/${cfg.baseId}/${TABLE_ID}?${fieldParams}${offset ? '&offset=' + offset : ''}`;
+      const url = `https://wandering-sound-8f28.nicolasgmontaner.workers.dev/v0/${cfg.baseId}/${TABLE_ID}?${fieldParams}${offset ? '&offset=' + offset : ''}`;
       const res = await fetch(url, {
         headers: { 'Authorization': `Bearer ${cfg.apiKey}` }
       });
