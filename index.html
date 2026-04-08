@@ -131,9 +131,9 @@
 <script>
 const TABLE_ID = 'tblkxAIwpWMP30gT2';
 const F = {
-  obra: 'fldRUIt3e07QuBncA', proveedor: 'fldrWQM6CALeSb8zu',
-  rubro: 'fldqTk6oOVmCJN5NN', tipo: 'fldCBMKP6dHcfY6Hx',
-  monto_proveedor: 'fldg4xVr68ibz1pgw', monto_cliente: 'fldcAkBx9aOJ8006G'
+  obra: 'obra', proveedor: 'proveedor',
+  rubro: 'rubro', tipo: 'tipo',
+  monto_proveedor: 'monto_proveedor', monto_cliente: 'monto_cliente'
 };
 
 let todos = [];
@@ -177,7 +177,7 @@ async function cargarDatos() {
   document.getElementById('exportBtn').disabled = true;
 
   try {
-    const fieldParams = Object.values(F).map(f => `fields[]=${f}`).join('&');
+    const fieldParams = '';
     let allRecords = [];
     let offset = '';
     
