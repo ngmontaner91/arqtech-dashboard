@@ -307,7 +307,7 @@ function exportar() {
 window.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarConfig(); });
 document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarConfig(); });
 
-cargarDatos();
+window.addEventListener("load", () => setTimeout(cargarDatos, 100));
 </script>
 </body>
 </html>
