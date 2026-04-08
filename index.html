@@ -307,7 +307,18 @@ function exportar() {
 window.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarConfig(); });
 document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarConfig(); });
 
-window.addEventListener("load", () => setTimeout(cargarDatos, 100));
+window.addEventListener("load", () => {
+  const key = localStorage.getItem('arqtech_key');
+  const base = localStorage.getItem('arqtech_base');
+  console.log('KEY:', key ? 'encontrado' : 'NO encontrado');
+  console.log('BASE:', base || 'NO encontrado');
+  if (key) {
+    setTimeout(cargarDatos, 300);
+  } else {
+    document.getElementById('tableContent').innerHTML = '<div class="error-state">Configurá tu API Key para comenzar.</div>';
+    setTimeout(abrirConfig, 500);
+  }
+});
 </script>
 </body>
 </html>
