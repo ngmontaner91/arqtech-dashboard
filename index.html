@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARQTECH — Consolidado de Proveedores</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #F7F5F0; --surface: #FFFFFF; --border: #E8E4DC; --border-strong: #C8C4BC;
+    --text: #1A1814; --text-muted: #7A7670; --text-faint: #B0ACA4;
+    --blue: #1B4F8A; --blue-bg: #EEF4FB; --amber: #8A5A1B; --amber-bg: #FBF4EE;
+    --green: #1B6B3A; --green-bg: #EEF8F2; --red: #8A1B1B; --red-bg: #FBEEEE;
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 18px 40px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .logo { font-size: 12px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); }
+  .logo span { color: var(--text); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .btn { font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: 6px; cursor: pointer; transition: all 0.15s; }
+  .btn-outline { background: none; border: 1px solid var(--border); color: var(--text-muted); }
+  .btn-outline:hover { border-color: var(--border-strong); color: var(--text); }
+  .btn-solid { background: var(--text); border: none; color: white; }
+  .btn-solid:hover { opacity: 0.8; }
+  .btn-solid:disabled { opacity: 0.3; cursor: not-allowed; }
+  .last-update { font-size: 11px; color: var(--text-faint); font-family: 'DM Mono', monospace; }
+  main { max-width: 1100px; margin: 0 auto; padding: 40px 40px 80px; }
+  .page-title { font-size: 28px; font-weight: 300; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .page-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 32px; }
+  .controls { display: flex; gap: 12px; align-items: center; margin-bottom: 32px; flex-wrap: wrap; }
+  select { font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 32px 8px 12px; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; cursor: pointer; min-width: 280px; }
+  select:focus { outline: none; border-color: var(--border-strong); }
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 32px; }
+  @media (max-width: 700px) { .stat-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .stat-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 8px; }
+  .stat-value { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 400; letter-spacing: -0.02em; }
+  .stat-card.presupuesto .stat-value { color: var(--blue); }
+  .stat-card.adicionales .stat-value { color: var(--amber); }
+  .stat-card.pagado .stat-value { color: var(--green); }
+  .stat-card.saldo .stat-value { color: var(--red); }
+  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .table-header { padding: 16px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .table-title { font-size: 12px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+  .record-count { font-size: 11px; color: var(--text-faint); font-family: 'DM Mono', monospace; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); text-align: left; padding: 12px 24px; border-bottom: 1px solid var(--border); }
+  thead th.num { text-align: right; }
+  tbody tr:hover { background: var(--bg); }
+  tbody tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
+  td { padding: 14px 24px; font-size: 13px; vertical-align: middle; }
+  td.num { text-align: right; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .proveedor-name { font-weight: 500; font-size: 13px; }
+  .rubro-badge { display: inline-block; font-size: 10px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 7px; border-radius: 4px; background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); margin-top: 3px; }
+  .saldo-pos { color: var(--red); }
+  .saldo-zero, .saldo-neg { color: var(--green); }
+  tfoot tr td { padding: 14px 24px; font-size: 12px; font-weight: 500; border-top: 1px solid var(--border-strong); background: var(--bg); font-family: 'DM Mono', monospace; }
+  tfoot tr td:first-child { font-family: 'DM Sans', sans-serif; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+  .empty-state, .loading-state, .error-state { text-align: center; padding: 60px 24px; font-size: 13px; }
+  .loading-state, .empty-state { color: var(--text-muted); }
+  .error-state { color: var(--red); }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--text); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border-radius: 16px; padding: 32px; width: 100%; max-width: 500px; margin: 20px; }
+  .modal h2 { font-size: 18px; font-weight: 400; margin-bottom: 6px; }
+  .modal p { font-size: 12px; color: var(--text-muted); margin-bottom: 24px; line-height: 1.6; }
+  .field-group { margin-bottom: 16px; }
+  .field-label { font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; display: block; }
+  input[type="text"], input[type="password"] { font-family: 'DM Mono', monospace; font-size: 12px; width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); }
+  input:focus { outline: none; border-color: var(--border-strong); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+  .hint { font-size: 11px; color: var(--text-faint); margin-top: 5px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span>ARQTECH</span> &mdash; Consolidado de Proveedores</div>
+  <div class="header-right">
+    <span class="last-update" id="lastUpdate"></span>
+    <button class="btn btn-outline" onclick="abrirConfig()">Configurar API</button>
+    <button class="btn btn-solid" id="exportBtn" onclick="exportar()" disabled>Exportar CSV</button>
+  </div>
+</header>
+
+<main>
+  <p class="page-title">Estado de proveedores</p>
+  <p class="page-subtitle">Presupuestos, adicionales y pagos por obra</p>
+  <div class="controls">
+    <select id="obraSelect" onchange="filtrar()"><option value="">Todas las obras</option></select>
+    <button class="btn btn-outline" onclick="cargarDatos()">↺ Actualizar</button>
+  </div>
+  <div class="stat-grid" id="statGrid">
+    <div class="stat-card presupuesto"><div class="stat-label">Presupuestado</div><div class="stat-value">$ —</div></div>
+    <div class="stat-card adicionales"><div class="stat-label">Adicionales</div><div class="stat-value">$ —</div></div>
+    <div class="stat-card pagado"><div class="stat-label">Pagado</div><div class="stat-value">$ —</div></div>
+    <div class="stat-card saldo"><div class="stat-label">Saldo pendiente</div><div class="stat-value">$ —</div></div>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header">
+      <span class="table-title">Detalle por proveedor</span>
+      <span class="record-count" id="recordCount"></span>
+    </div>
+    <div id="tableContent"><div class="loading-state"><div class="spinner"></div>Cargando datos...</div></div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Configuración de Airtable</h2>
+    <p>Ingresá tu Personal Access Token de Airtable. Lo encontrás en airtable.com → tu avatar → Developer hub → Personal access tokens. El token debe tener los scopes: data.records:read, schema.bases:read.</p>
+    <div class="field-group">
+      <label class="field-label">Personal Access Token</label>
+      <input type="password" id="inputApiKey" placeholder="patXXXXXXXXXXXXXX.XXXXXXXX..." />
+      <p class="hint">Se guarda solo en este navegador, nunca se envía a terceros.</p>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Base ID</label>
+      <input type="text" id="inputBaseId" value="appYefsAUNtFp4pfY" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="cerrarConfig()">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarConfig()">Guardar y cargar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TABLE_ID = 'tblkxAIwpWMP30gT2';
+const F = {
+  obra: 'fldRUIt3e07QuBncA', proveedor: 'fldrWQM6CALeSb8zu',
+  rubro: 'fldqTk6oOVmCJN5NN', tipo: 'fldCBMKP6dHcfY6Hx',
+  monto_proveedor: 'fldg4xVr68ibz1pgw', monto_cliente: 'fldcAkBx9aOJ8006G'
+};
+
+let todos = [];
+
+function getConfig() {
+  return {
+    apiKey: localStorage.getItem('arqtech_key') || '',
+    baseId: localStorage.getItem('arqtech_base') || 'appYefsAUNtFp4pfY'
+  };
+}
+
+function abrirConfig() {
+  const c = getConfig();
+  document.getElementById('inputApiKey').value = c.apiKey;
+  document.getElementById('inputBaseId').value = c.baseId;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function cerrarConfig() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+function guardarConfig() {
+  const key = document.getElementById('inputApiKey').value.trim();
+  const base = document.getElementById('inputBaseId').value.trim();
+  if (!key) { alert('Ingresá tu Personal Access Token de Airtable.'); return; }
+  localStorage.setItem('arqtech_key', key);
+  localStorage.setItem('arqtech_base', base);
+  cerrarConfig();
+  cargarDatos();
+}
+
+function fmt(n) {
+  if (!n && n !== 0) return '—';
+  return '$ ' + Math.round(n).toLocaleString('es-AR');
+}
+
+async function cargarDatos() {
+  const cfg = getConfig();
+  if (!cfg.apiKey) { mostrarError('Configurá tu API Key para comenzar.'); abrirConfig(); return; }
+
+  document.getElementById('tableContent').innerHTML = '<div class="loading-state"><div class="spinner"></div>Cargando datos desde Airtable...</div>';
+  document.getElementById('exportBtn').disabled = true;
+
+  try {
+    const fieldParams = Object.values(F).map(f => `fields[]=${f}`).join('&');
+    let allRecords = [];
+    let offset = '';
+    
+    do {
+      const url = `https://api.airtable.com/v0/${cfg.baseId}/${TABLE_ID}?${fieldParams}${offset ? '&offset=' + offset : ''}`;
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${cfg.apiKey}` }
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || `Error ${res.status} — verificá tu token.`);
+      }
+      const data = await res.json();
+      allRecords = allRecords.concat(data.records || []);
+      offset = data.offset || '';
+    } while (offset);
+
+    todos = allRecords.map(r => ({
+      obra: r.fields[F.obra] || '',
+      proveedor: r.fields[F.proveedor] || '—',
+      rubro: r.fields[F.rubro] || '',
+      tipo: (r.fields[F.tipo]?.name || r.fields[F.tipo] || '').toLowerCase(),
+      monto_proveedor: Number(r.fields[F.monto_proveedor]) || 0,
+      monto_cliente: Number(r.fields[F.monto_cliente]) || 0
+    }));
+
+    poblarSelector();
+    filtrar();
+    document.getElementById('lastUpdate').textContent = `Actualizado ${new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'})}`;
+    document.getElementById('exportBtn').disabled = false;
+  } catch(e) {
+    mostrarError(e.message);
+  }
+}
+
+function poblarSelector() {
+  const obras = [...new Set(todos.map(r => r.obra).filter(Boolean))].sort();
+  const sel = document.getElementById('obraSelect');
+  const val = sel.value;
+  sel.innerHTML = '<option value="">Todas las obras</option>' + obras.map(o => `<option value="${o}">${o}</option>`).join('');
+  if (obras.includes(val)) sel.value = val;
+}
+
+function buildConsolidado(obraFiltro) {
+  const filtered = obraFiltro ? todos.filter(r => r.obra === obraFiltro) : todos;
+  const map = {};
+  filtered.forEach(r => {
+    const key = r.obra + '|||' + r.proveedor;
+    if (!map[key]) map[key] = { obra: r.obra, proveedor: r.proveedor, rubro: r.rubro, presupuesto: 0, adicionales: 0, pagos: 0 };
+    if (r.rubro && !map[key].rubro) map[key].rubro = r.rubro;
+    if (r.tipo.includes('presupuesto')) map[key].presupuesto += r.monto_proveedor;
+    else if (r.tipo.includes('adicional')) map[key].adicionales += r.monto_proveedor;
+    else if (r.tipo.includes('pago')) map[key].pagos += r.monto_proveedor;
+  });
+  return Object.values(map).sort((a, b) => a.proveedor.localeCompare(b.proveedor));
+}
+
+function filtrar() {
+  const obra = document.getElementById('obraSelect').value;
+  const rows = buildConsolidado(obra);
+  renderStats(rows);
+  renderTabla(rows);
+}
+
+function renderStats(rows) {
+  const totP = rows.reduce((s,r) => s+r.presupuesto, 0);
+  const totA = rows.reduce((s,r) => s+r.adicionales, 0);
+  const totPag = rows.reduce((s,r) => s+r.pagos, 0);
+  const totS = (totP + totA) - totPag;
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat-card presupuesto"><div class="stat-label">Presupuestado</div><div class="stat-value">${fmt(totP)}</div></div>
+    <div class="stat-card adicionales"><div class="stat-label">Adicionales</div><div class="stat-value">${fmt(totA)}</div></div>
+    <div class="stat-card pagado"><div class="stat-label">Pagado</div><div class="stat-value">${fmt(totPag)}</div></div>
+    <div class="stat-card saldo"><div class="stat-label">Saldo pendiente</div><div class="stat-value">${fmt(totS)}</div></div>`;
+}
+
+function renderTabla(rows) {
+  document.getElementById('recordCount').textContent = `${rows.length} proveedor${rows.length !== 1 ? 'es' : ''}`;
+  if (!rows.length) { document.getElementById('tableContent').innerHTML = '<div class="empty-state">No hay registros para esta obra.</div>'; return; }
+  let totP=0, totA=0, totPag=0;
+  let html = `<table><thead><tr>
+    <th>Proveedor</th><th class="num">Presupuesto inicial</th>
+    <th class="num">Adicionales</th><th class="num">Pagado</th><th class="num">Saldo pendiente</th>
+  </tr></thead><tbody>`;
+  rows.forEach(r => {
+    const saldo = (r.presupuesto + r.adicionales) - r.pagos;
+    totP += r.presupuesto; totA += r.adicionales; totPag += r.pagos;
+    const sc = saldo > 0 ? 'saldo-pos' : saldo === 0 ? 'saldo-zero' : 'saldo-neg';
+    html += `<tr>
+      <td><div class="proveedor-name">${r.proveedor}</div>${r.rubro ? `<div class="rubro-badge">${r.rubro}</div>` : ''}</td>
+      <td class="num">${fmt(r.presupuesto)}</td>
+      <td class="num" style="color:${r.adicionales ? 'var(--amber)' : 'var(--text-faint)'}">${r.adicionales ? fmt(r.adicionales) : '—'}</td>
+      <td class="num" style="color:${r.pagos ? 'var(--green)' : 'var(--text-faint)'}">${r.pagos ? fmt(r.pagos) : '—'}</td>
+      <td class="num ${sc}">${fmt(saldo)}</td>
+    </tr>`;
+  });
+  const totS = (totP+totA)-totPag;
+  const tsc = totS > 0 ? 'saldo-pos' : 'saldo-neg';
+  html += `</tbody><tfoot><tr>
+    <td>Total</td><td class="num">${fmt(totP)}</td>
+    <td class="num" style="color:var(--amber)">${fmt(totA)}</td>
+    <td class="num" style="color:var(--green)">${fmt(totPag)}</td>
+    <td class="num ${tsc}">${fmt(totS)}</td>
+  </tr></tfoot></table>`;
+  document.getElementById('tableContent').innerHTML = html;
+}
+
+function mostrarError(msg) {
+  document.getElementById('tableContent').innerHTML = `<div class="error-state">${msg}</div>`;
+}
+
+function exportar() {
+  const obra = document.getElementById('obraSelect').value;
+  const rows = buildConsolidado(obra);
+  let csv = 'Obra,Proveedor,Rubro,Presupuesto inicial,Adicionales,Pagado,Saldo pendiente\n';
+  rows.forEach(r => {
+    const saldo = (r.presupuesto + r.adicionales) - r.pagos;
+    csv += `"${r.obra}","${r.proveedor}","${r.rubro}",${r.presupuesto},${r.adicionales},${r.pagos},${saldo}\n`;
+  });
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `consolidado${obra ? '_'+obra.replace(/[^a-z0-9]/gi,'_').toLowerCase() : ''}.csv`;
+  a.click();
+}
+
+window.addEventListener('keydown', e => { if (e.key === 'Escape') cerrarConfig(); });
+document.getElementById('modalOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) cerrarConfig(); });
+
+cargarDatos();
+</script>
+</body>
+</html>
