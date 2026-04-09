@@ -53,7 +53,7 @@ main{max-width:1200px;margin:0 auto;padding:36px 40px 80px}
 .card-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
 .card-body{padding:24px}
 /* Chart containers */
-.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;max-width:700px}
 @media(max-width:800px){.chart-grid{grid-template-columns:1fr}}
 .chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px}
 .chart-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px}
@@ -152,11 +152,10 @@ input:focus{outline:none;border-color:var(--border-strong)}
 <div id="s-proveedores" class="section">
   <p class="section-title">Resumen estado de obras</p>
   <p class="section-sub">Presupuestos, adicionales y pagos por proveedor y obra</p>
-  <div class="stat-grid stat-grid-4" id="prov-stats">
+  <div class="stat-grid stat-grid-3" id="prov-stats">
     <div class="stat-card"><div class="stat-label">Presupuestado</div><div class="stat-value blue" id="ps-pres">$ —</div></div>
     <div class="stat-card"><div class="stat-label">Adicionales</div><div class="stat-value amber" id="ps-adic">$ —</div></div>
-    <div class="stat-card"><div class="stat-label">Pagado</div><div class="stat-value green" id="ps-pag">$ —</div></div>
-    <div class="stat-card"><div class="stat-label">Saldo pendiente</div><div class="stat-value red" id="ps-saldo">$ —</div></div>
+    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="ps-total">$ —</div></div>
   </div>
   <div style="display:flex;gap:12px;align-items:center;margin-bottom:24px">
     <select id="obraSelect" onchange="renderProveedores()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 32px 8px 12px;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;min-width:280px">
@@ -352,11 +351,11 @@ function renderResumen() {
     <div class="chart-grid">
       <div class="chart-wrap">
         <div class="chart-title">Movimientos del mes</div>
-        <canvas id="chartTorta1" height="75"></canvas>
+        <canvas id="chartTorta1" height="55"></canvas>
       </div>
       <div class="chart-wrap">
         <div class="chart-title">Gastos por origen</div>
-        <canvas id="chartTorta2" height="75"></canvas>
+        <canvas id="chartTorta2" height="55"></canvas>
       </div>
     </div>
     <div class="table-wrap">
@@ -511,14 +510,13 @@ function renderProveedores() {
   const totS = (totP+totA)-totPag;
   document.getElementById('ps-pres').textContent = fmt(totP);
   document.getElementById('ps-adic').textContent = fmt(totA);
-  document.getElementById('ps-pag').textContent = fmt(totPag);
-  document.getElementById('ps-saldo').textContent = fmt(totS);
+  document.getElementById('ps-total').textContent = fmt(totP + totA);
   document.getElementById('prov-count').textContent = `${rows.length} proveedor${rows.length!==1?'es':''}`;
 
   if (!rows.length) { document.getElementById('prov-table').innerHTML = '<div class="empty-state">No hay registros.</div>'; return; }
 
   let html = `<table><thead><tr>
-    <th>Proveedor</th><th class="num">Presupuesto inicial</th><th class="num">Adicionales</th><th class="num">Pagado</th><th class="num">Saldo pendiente</th>
+    <th>Proveedor</th><th class="num">Presupuesto inicial</th><th class="num">Adicionales</th><th class="num">Total</th>
   </tr></thead><tbody>`;
   let tP=0,tA=0,tPag=0;
   rows.forEach(r => {
@@ -528,12 +526,11 @@ function renderProveedores() {
       <td><div style="font-weight:500;font-size:13px">${r.proveedor}</div>${r.rubro?`<div style="display:inline-block;font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:var(--bg);color:var(--text-muted);border:1px solid var(--border);margin-top:3px">${r.rubro}</div>`:''}</td>
       <td class="num mono">${fmt(r.pres)}</td>
       <td class="num mono" style="color:${r.adic?'var(--amber)':'var(--text-faint)'}">${r.adic?fmt(r.adic):'—'}</td>
-      <td class="num mono" style="color:${r.pag?'var(--green)':'var(--text-faint)'}">${r.pag?fmt(r.pag):'—'}</td>
-      <td class="num mono" style="color:${saldo>0?'var(--red)':saldo===0?'var(--text-muted)':'var(--green)'}">${fmt(saldo)}</td>
+      <td class="num mono" style="font-weight:500">${fmt(r.pres+r.adic)}</td>
     </tr>`;
   });
   const tS=(tP+tA)-tPag;
-  html+=`</tbody><tfoot><tr><td>Total</td><td class="num">${fmt(tP)}</td><td class="num" style="color:var(--amber)">${fmt(tA)}</td><td class="num" style="color:var(--green)">${fmt(tPag)}</td><td class="num" style="color:${tS>0?'var(--red)':'var(--green)'}">${fmt(tS)}</td></tr></tfoot></table>`;
+  html+=`</tbody><tfoot><tr><td>Total</td><td class="num">${fmt(tP)}</td><td class="num" style="color:var(--amber)">${fmt(tA)}</td><td class="num" style="font-weight:500">${fmt(tP+tA)}</td></tr></tfoot></table>`;
   document.getElementById('prov-table').innerHTML = html;
 }
 
