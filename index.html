@@ -55,7 +55,7 @@ main{max-width:1200px;margin:0 auto;padding:36px 40px 80px}
 /* Chart containers */
 .chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px}
 @media(max-width:800px){.chart-grid{grid-template-columns:1fr}}
-.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px}
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px}
 .chart-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px}
 .chart-full{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px}
 /* Table */
@@ -352,11 +352,11 @@ function renderResumen() {
     <div class="chart-grid">
       <div class="chart-wrap">
         <div class="chart-title">Movimientos del mes</div>
-        <canvas id="chartTorta1" height="140"></canvas>
+        <canvas id="chartTorta1" height="75"></canvas>
       </div>
       <div class="chart-wrap">
         <div class="chart-title">Gastos por origen</div>
-        <canvas id="chartTorta2" height="140"></canvas>
+        <canvas id="chartTorta2" height="75"></canvas>
       </div>
     </div>
     <div class="table-wrap">
@@ -383,9 +383,9 @@ function renderResumen() {
     data: {
       labels: evolData.map(d => fmtMes(d.mes)),
       datasets: [
-        { label: 'Ingresos', data: evolData.map(d=>d.ing), backgroundColor: '#B5D4F4', borderRadius: 4 },
-        { label: 'Egresos', data: evolData.map(d=>d.eg), backgroundColor: '#F0957B', borderRadius: 4 },
-        { label: 'Balance', data: evolData.map(d=>d.bal), type: 'line', borderColor: '#1A1814', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#1A1814', tension: 0.3 }
+        { label: 'Ingresos', data: evolData.map(d=>d.ing), backgroundColor: '#B5D4F4', borderRadius: 4, order: 1 },
+        { label: 'Egresos', data: evolData.map(d=>d.eg), backgroundColor: '#F0957B', borderRadius: 4, order: 2 },
+        { label: 'Balance', data: evolData.map(d=>d.bal), type: 'line', borderColor: '#1A1814', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#1A1814', tension: 0.3, order: 0, z: 10 }
       ]
     },
     options: { responsive: true, plugins: { legend: { position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } }, scales: { y: { ticks: { callback: v => '$ ' + (v/1000000).toFixed(1) + 'M', font: { family: 'DM Mono', size: 11 } }, grid: { color: '#E8E4DC' } }, x: { ticks: { font: { family: 'DM Sans', size: 11 } }, grid: { display: false } } } }
@@ -434,7 +434,7 @@ function renderObras() {
         <div style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:${bal>=0?'var(--green)':'var(--red)'}">Balance</div>
         <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:${bal>=0?'var(--green)':'var(--red)'};">${fmt(bal)}</div>
       </div>
-      <div class="obra-card-stats">
+      <div class="obra-card-stats" style="grid-template-columns:1fr 1fr">
         <div class="obra-stat">
           <div class="obra-stat-label">Ingresos</div>
           <div class="obra-stat-value" style="color:var(--green);white-space:nowrap">${fmt(ing)}</div>
@@ -442,10 +442,6 @@ function renderObras() {
         <div class="obra-stat">
           <div class="obra-stat-label">Egresos</div>
           <div class="obra-stat-value" style="color:var(--red);white-space:nowrap">${fmt(eg)}</div>
-        </div>
-        <div class="obra-stat">
-          <div class="obra-stat-label">Presup.</div>
-          <div class="obra-stat-value" style="color:var(--text-muted);white-space:nowrap">${fmt(f.presupuesto_inicial||0)}</div>
         </div>
       </div>
     </div>`;
@@ -460,6 +456,8 @@ function renderProveedores() {
   const todos = DATA.proveedores;
   const filtered = filtro ? todos.filter(r => r.fields.obra === filtro) : todos;
 
+  // Presupuesto y adicionales usan monto_cliente (lo que se cobra al cliente)
+  // Pagado usa ingresos de DASHBOARD de origen Obras por obra
   const map = {};
   filtered.forEach(r => {
     const f = r.fields;
@@ -467,10 +465,43 @@ function renderProveedores() {
     if (!map[key]) map[key] = { obra: f.obra||'', proveedor: f.proveedor||'—', rubro: f.rubro||'', pres: 0, adic: 0, pag: 0 };
     if (f.rubro && !map[key].rubro) map[key].rubro = f.rubro;
     const tipo = (f.tipo||'').toLowerCase();
-    if (tipo.includes('presupuesto')) map[key].pres += (f.monto_proveedor||0);
-    else if (tipo.includes('adicional')) map[key].adic += (f.monto_proveedor||0);
-    else if (tipo.includes('pago')) map[key].pag += (f.monto_proveedor||0);
+    if (tipo.includes('presupuesto')) map[key].pres += (f.monto_cliente||0);
+    else if (tipo.includes('adicional')) map[key].adic += (f.monto_cliente||0);
+    // pagos NO vienen de RESUMEN_PROVEEDORES sino de DASHBOARD (ingresos por obra)
   });
+
+  // Calcular pagado por obra desde DASHBOARD (ingresos de Obras)
+  const pagadoPorObra = {};
+  DATA.dashboard.forEach(r => {
+    const f = r.fields;
+    if ((f.origen||'') === 'Obras' && (f.tipo_de_movimiento||'') === 'Ingreso') {
+      const obra = f.obra_nombre || '';
+      pagadoPorObra[obra] = (pagadoPorObra[obra]||0) + (f.monto||0);
+    }
+  });
+
+  // Asignar pagado proporcional por proveedor dentro de cada obra
+  // Como el pago es a nivel obra, lo mostramos a nivel obra (agrupado)
+  // Si hay un solo proveedor en la obra, le asignamos todo
+  // Si hay varios, distribuimos proporcionalmente según presupuesto
+  const obraProveedores = {};
+  Object.values(map).forEach(r => {
+    if (!obraProveedores[r.obra]) obraProveedores[r.obra] = [];
+    obraProveedores[r.obra].push(r);
+  });
+
+  Object.entries(obraProveedores).forEach(([obra, provs]) => {
+    const totalCobrado = pagadoPorObra[obra] || 0;
+    const totalPres = provs.reduce((s,p) => s + p.pres + p.adic, 0);
+    provs.forEach(p => {
+      if (totalPres > 0) {
+        p.pag = Math.round(totalCobrado * (p.pres + p.adic) / totalPres);
+      } else {
+        p.pag = provs.length === 1 ? totalCobrado : 0;
+      }
+    });
+  });
+
   const rows = Object.values(map).sort((a,b) => a.proveedor.localeCompare(b.proveedor));
 
   // Stats
@@ -522,9 +553,23 @@ function exportarCSV() {
     const f=r.fields;const key=(f.obra||'')+'|||'+(f.proveedor||'');
     if(!map[key])map[key]={obra:f.obra||'',proveedor:f.proveedor||'—',rubro:f.rubro||'',pres:0,adic:0,pag:0};
     const tipo=(f.tipo||'').toLowerCase();
-    if(tipo.includes('presupuesto'))map[key].pres+=(f.monto_proveedor||0);
-    else if(tipo.includes('adicional'))map[key].adic+=(f.monto_proveedor||0);
-    else if(tipo.includes('pago'))map[key].pag+=(f.monto_proveedor||0);
+    if(tipo.includes('presupuesto'))map[key].pres+=(f.monto_cliente||0);
+    else if(tipo.includes('adicional'))map[key].adic+=(f.monto_cliente||0);
+  });
+  const pagadoPorObraCSV = {};
+  DATA.dashboard.forEach(r => {
+    const f = r.fields;
+    if ((f.origen||'') === 'Obras' && (f.tipo_de_movimiento||'') === 'Ingreso') {
+      const obra = f.obra_nombre || '';
+      pagadoPorObraCSV[obra] = (pagadoPorObraCSV[obra]||0) + (f.monto||0);
+    }
+  });
+  const obraProvsCSV = {};
+  Object.values(map).forEach(r => { if(!obraProvsCSV[r.obra])obraProvsCSV[r.obra]=[];obraProvsCSV[r.obra].push(r); });
+  Object.entries(obraProvsCSV).forEach(([obra,provs]) => {
+    const totalCobrado = pagadoPorObraCSV[obra]||0;
+    const totalPres = provs.reduce((s,p)=>s+p.pres+p.adic,0);
+    provs.forEach(p => { p.pag = totalPres>0 ? Math.round(totalCobrado*(p.pres+p.adic)/totalPres) : (provs.length===1?totalCobrado:0); });
   });
   const rows=Object.values(map);
   let csv='Obra,Proveedor,Rubro,Presupuesto inicial,Adicionales,Pagado,Saldo pendiente\n';
