@@ -79,15 +79,15 @@ tfoot td:first-child{font-family:'DM Sans',sans-serif;font-size:11px;letter-spac
 .tag-amber{background:#FBF4EE;color:#8A5A1B}
 .tag-gray{background:#F1EFE8;color:#5F5E5A}
 /* Obra cards */
-.obras-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-bottom:24px}
+.obras-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-bottom:24px}
 .obra-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;transition:border-color .15s}
 .obra-card:hover{border-color:var(--border-strong)}
-.obra-card-name{font-size:14px;font-weight:500;margin-bottom:4px}
+.obra-card-name{font-size:14px;font-weight:500;margin-bottom:4px;line-height:1.3}
 .obra-card-meta{font-size:11px;color:var(--text-muted);margin-bottom:16px}
 .obra-card-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .obra-stat{text-align:center;padding:10px 8px;background:var(--bg);border-radius:8px}
 .obra-stat-label{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);margin-bottom:4px}
-.obra-stat-value{font-family:'DM Mono',monospace;font-size:13px;font-weight:500}
+.obra-stat-value{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;white-space:nowrap}
 /* Status badge */
 .status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:12px}
 .status::before{content:'';width:6px;height:6px;border-radius:50%;display:inline-block}
@@ -123,7 +123,7 @@ input:focus{outline:none;border-color:var(--border-strong)}
   <nav class="nav">
     <button class="nav-btn active" onclick="showSection('resumen')">Resumen</button>
     <button class="nav-btn" onclick="showSection('obras')">Obras</button>
-    <button class="nav-btn" onclick="showSection('proveedores')">Proveedores</button>
+    <button class="nav-btn" onclick="showSection('proveedores')">Estado obras</button>
     <button class="nav-btn" onclick="showSection('sueldos')">Sueldos</button>
   </nav>
   <div class="header-right">
@@ -150,8 +150,8 @@ input:focus{outline:none;border-color:var(--border-strong)}
 
 <!-- PROVEEDORES -->
 <div id="s-proveedores" class="section">
-  <p class="section-title">Estado de proveedores</p>
-  <p class="section-sub">Presupuestos, adicionales y pagos por obra</p>
+  <p class="section-title">Resumen estado de obras</p>
+  <p class="section-sub">Presupuestos, adicionales y pagos por proveedor y obra</p>
   <div class="stat-grid stat-grid-4" id="prov-stats">
     <div class="stat-card"><div class="stat-label">Presupuestado</div><div class="stat-value blue" id="ps-pres">$ —</div></div>
     <div class="stat-card"><div class="stat-label">Adicionales</div><div class="stat-value amber" id="ps-adic">$ —</div></div>
@@ -335,15 +335,15 @@ function renderResumen() {
   document.getElementById('resumen-sub').textContent = `Mes corriente: ${fmtMes(mes)}`;
 
   document.getElementById('resumen-content').innerHTML = `
-    <div class="stat-grid stat-grid-4" style="margin-bottom:16px">
+    <div class="stat-grid stat-grid-3" style="margin-bottom:16px">
       <div class="stat-card"><div class="stat-label">Balance del mes</div><div class="stat-value ${balanceMes>=0?'green':'red'}">${fmt(balanceMes)}</div></div>
       <div class="stat-card"><div class="stat-label">Ingresos del mes</div><div class="stat-value blue">${fmt(ingresosMes)}</div></div>
       <div class="stat-card"><div class="stat-label">Egresos del mes</div><div class="stat-value red">${fmt(egresosMes)}</div></div>
-      <div class="stat-card"><div class="stat-label">Balance obras</div><div class="stat-value ${balanceObras>=0?'green':'red'}">${fmt(balanceObras)}</div></div>
     </div>
-    <div class="stat-grid stat-grid-2" style="margin-bottom:24px">
-      <div class="stat-card"><div class="stat-label">Sueldos del mes</div><div class="stat-value red">${fmt(sueldosMes)}</div></div>
-      <div class="stat-card"><div class="stat-label">Otros (gastos admin + marketing)</div><div class="stat-value ${otrosMes>=0?'green':'red'}">${fmt(otrosMes)}</div></div>
+    <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:24px">
+      <div class="stat-card"><div class="stat-label">Balance obras</div><div class="stat-value ${balanceObras>=0?'green':'red'}">${fmt(balanceObras)}</div></div>
+      <div class="stat-card"><div class="stat-label">Sueldos</div><div class="stat-value red">${fmt(sueldosMes)}</div></div>
+      ${Object.entries(egresosPorOrigen).filter(([k])=>k!=='Obras'&&k!=='Sueldos').map(([k,v])=>`<div class="stat-card"><div class="stat-label">${k}</div><div class="stat-value amber">${fmt(v)}</div></div>`).join('')}
     </div>
     <div class="chart-full">
       <div class="chart-title">Evolutivo mensual — últimos 6 meses</div>
@@ -352,11 +352,11 @@ function renderResumen() {
     <div class="chart-grid">
       <div class="chart-wrap">
         <div class="chart-title">Movimientos del mes</div>
-        <canvas id="chartTorta1" height="200"></canvas>
+        <canvas id="chartTorta1" height="140"></canvas>
       </div>
       <div class="chart-wrap">
         <div class="chart-title">Gastos por origen</div>
-        <canvas id="chartTorta2" height="200"></canvas>
+        <canvas id="chartTorta2" height="140"></canvas>
       </div>
     </div>
     <div class="table-wrap">
@@ -424,25 +424,28 @@ function renderObras() {
     const ing = f.total_ingresos || 0;
     const eg = f.total_egresos || 0;
     const bal = f.total_balance || (ing - eg);
-    const activa = f.estado === 'En proceso';
+    const cat = f.Categoría?.name || f.Categoría || '';
     return `<div class="obra-card">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+      <div style="min-height:48px;margin-bottom:8px">
         <div class="obra-card-name">${f.nombre||'—'}</div>
-        <span class="status ${activa?'status-active':'status-done'}">${activa?'En proceso':'Finalizada'}</span>
       </div>
-      <div class="obra-card-meta">${f.Categoría?.name||f.Categoría||''} · desde ${f.fecha_inicio||'—'}</div>
+      ${cat?`<div style="margin-bottom:14px"><span class="tag tag-blue">${cat}</span></div>`:'<div style="margin-bottom:14px"></div>'}
+      <div style="background:${bal>=0?'#EEF8F2':'#FBEEEE'};border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:${bal>=0?'var(--green)':'var(--red)'}">Balance</div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:${bal>=0?'var(--green)':'var(--red)'};">${fmt(bal)}</div>
+      </div>
       <div class="obra-card-stats">
         <div class="obra-stat">
           <div class="obra-stat-label">Ingresos</div>
-          <div class="obra-stat-value" style="color:var(--green)">${fmt(ing)}</div>
+          <div class="obra-stat-value" style="color:var(--green);white-space:nowrap">${fmt(ing)}</div>
         </div>
         <div class="obra-stat">
           <div class="obra-stat-label">Egresos</div>
-          <div class="obra-stat-value" style="color:var(--red)">${fmt(eg)}</div>
+          <div class="obra-stat-value" style="color:var(--red);white-space:nowrap">${fmt(eg)}</div>
         </div>
         <div class="obra-stat">
-          <div class="obra-stat-label">Balance</div>
-          <div class="obra-stat-value" style="color:${bal>=0?'var(--green)':'var(--red)'}">${fmt(bal)}</div>
+          <div class="obra-stat-label">Presup.</div>
+          <div class="obra-stat-value" style="color:var(--text-muted);white-space:nowrap">${fmt(f.presupuesto_inicial||0)}</div>
         </div>
       </div>
     </div>`;
