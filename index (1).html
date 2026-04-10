@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARQTECH — Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F7F5F0;--surface:#FFFFFF;--border:#E8E4DC;--border-strong:#C8C4BC;
+  --text:#1A1814;--text-muted:#7A7670;--text-faint:#B0ACA4;
+  --blue:#1B4F8A;--amber:#8A5A1B;--green:#1B6B3A;--red:#8A1B1B;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;height:56px}
+.logo{font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)}
+.logo span{color:var(--text)}
+.nav{display:flex;gap:0}
+.nav-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:400;color:var(--text-muted);background:none;border:none;border-bottom:2px solid transparent;padding:0 16px;height:56px;cursor:pointer;transition:all .15s}
+.nav-btn:hover{color:var(--text)}
+.nav-btn.active{color:var(--text);border-bottom-color:var(--text);font-weight:500}
+.header-right{display:flex;align-items:center;gap:10px}
+.btn{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:6px 14px;border-radius:6px;cursor:pointer;transition:all .15s}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text-muted)}
+.btn-outline:hover{border-color:var(--border-strong);color:var(--text)}
+.btn-solid{background:var(--text);border:none;color:white}
+.btn-solid:hover{opacity:.8}
+main{max-width:1200px;margin:0 auto;padding:36px 40px 80px}
+.section{display:none}
+.section.active{display:block}
+.section-title{font-size:24px;font-weight:300;letter-spacing:-.02em;margin-bottom:4px}
+.section-sub{font-size:13px;color:var(--text-muted);margin-bottom:28px}
+/* Stat grid */
+.stat-grid{display:grid;gap:12px;margin-bottom:24px}
+.stat-grid-4{grid-template-columns:repeat(4,1fr)}
+.stat-grid-3{grid-template-columns:repeat(3,1fr)}
+.stat-grid-2{grid-template-columns:repeat(2,1fr)}
+@media(max-width:900px){.stat-grid-4{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.stat-grid-4,.stat-grid-3,.stat-grid-2{grid-template-columns:1fr}}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px}
+.stat-label{font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px}
+.stat-value{font-family:'DM Mono',monospace;font-size:22px;font-weight:400;letter-spacing:-.02em}
+.stat-value.blue{color:var(--blue)}
+.stat-value.green{color:var(--green)}
+.stat-value.red{color:var(--red)}
+.stat-value.amber{color:var(--amber)}
+.stat-value.auto{}
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.card-header{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+.card-body{padding:24px}
+/* Chart containers */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;max-width:700px}
+@media(max-width:800px){.chart-grid{grid-template-columns:1fr}}
+.chart-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px}
+.chart-title{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:16px}
+.chart-full{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px}
+/* Table */
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px}
+.table-header{padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.table-title-sm{font-size:12px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+table{width:100%;border-collapse:collapse}
+thead th{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-faint);text-align:left;padding:10px 24px;border-bottom:1px solid var(--border)}
+th.num,td.num{text-align:right}
+tbody tr:hover{background:var(--bg)}
+tbody tr:not(:last-child) td{border-bottom:1px solid var(--border)}
+td{padding:12px 24px;font-size:13px;vertical-align:middle}
+td.mono{font-family:'DM Mono',monospace;font-size:12px}
+tfoot td{padding:12px 24px;font-size:12px;font-weight:500;border-top:1px solid var(--border-strong);background:var(--bg);font-family:'DM Mono',monospace}
+tfoot td:first-child{font-family:'DM Sans',sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted)}
+/* Tags */
+.tag{display:inline-block;font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:4px}
+.tag-green{background:#EEF8F2;color:#1B6B3A}
+.tag-red{background:#FBEEEE;color:#8A1B1B}
+.tag-blue{background:#EEF4FB;color:#1B4F8A}
+.tag-amber{background:#FBF4EE;color:#8A5A1B}
+.tag-gray{background:#F1EFE8;color:#5F5E5A}
+/* Obra cards */
+.obras-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;margin-bottom:24px}
+.obra-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;transition:border-color .15s}
+.obra-card:hover{border-color:var(--border-strong)}
+.obra-card-name{font-size:14px;font-weight:500;margin-bottom:4px;line-height:1.3}
+.obra-card-meta{font-size:11px;color:var(--text-muted);margin-bottom:16px}
+.obra-card-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.obra-stat{text-align:center;padding:10px 8px;background:var(--bg);border-radius:8px}
+.obra-stat-label{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--text-faint);margin-bottom:4px}
+.obra-stat-value{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;white-space:nowrap}
+/* Status badge */
+.status{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:12px}
+.status::before{content:'';width:6px;height:6px;border-radius:50%;display:inline-block}
+.status-active{background:#EEF8F2;color:#1B6B3A}.status-active::before{background:#1B6B3A}
+.status-done{background:#F1EFE8;color:#5F5E5A}.status-done::before{background:#B0ACA4}
+/* Sueldos */
+.sueldo-table-wrap{overflow-x:auto}
+/* Modal */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:16px;padding:32px;width:100%;max-width:500px;margin:20px}
+.modal h2{font-size:18px;font-weight:400;margin-bottom:6px}
+.modal p{font-size:12px;color:var(--text-muted);margin-bottom:24px;line-height:1.6}
+.field-group{margin-bottom:16px}
+.field-label{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;display:block}
+input[type=text],input[type=password]{font-family:'DM Mono',monospace;font-size:12px;width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text)}
+input:focus{outline:none;border-color:var(--border-strong)}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+.hint{font-size:11px;color:var(--text-faint);margin-top:5px}
+/* Loading */
+.loading-state,.empty-state,.error-state{text-align:center;padding:60px 24px;font-size:13px}
+.loading-state,.empty-state{color:var(--text-muted)}
+.error-state{color:var(--red)}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.last-update{font-size:11px;color:var(--text-faint);font-family:'DM Mono',monospace}
+.form-card{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 24px;text-decoration:none;color:var(--text);transition:all .15s;cursor:pointer}
+.form-card:hover{border-color:var(--border-strong);transform:translateY(-1px)}
+.form-card-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;font-weight:500}
+.form-card-title{font-size:14px;font-weight:500;margin-bottom:3px}
+.form-card-sub{font-size:12px;color:var(--text-muted)}
+.form-card-arrow{margin-left:auto;font-size:16px;color:var(--text-faint);flex-shrink:0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span>ARQTECH</span></div>
+  <nav class="nav">
+    <button class="nav-btn active" onclick="showSection('resumen')">Resumen</button>
+    <button class="nav-btn" onclick="showSection('obras')">Obras</button>
+    <button class="nav-btn" onclick="showSection('proveedores')">Estado obras</button>
+    <button class="nav-btn" onclick="showSection('sueldos')">Sueldos</button>
+    <button class="nav-btn" onclick="showSection('cargar')">+ Cargar</button>
+  </nav>
+  <div class="header-right">
+    <span class="last-update" id="lastUpdate"></span>
+    <button class="btn btn-outline" onclick="abrirConfig()">API</button>
+    <button class="btn btn-solid" onclick="recargar()">↺ Actualizar</button>
+  </div>
+</header>
+
+<!-- RESUMEN -->
+<main>
+<div id="s-resumen" class="section active">
+  <p class="section-title">Resumen general</p>
+  <p class="section-sub" id="resumen-sub">Cargando...</p>
+  <div id="resumen-content"><div class="loading-state"><div class="spinner"></div>Cargando datos...</div></div>
+</div>
+
+<!-- OBRAS -->
+<div id="s-obras" class="section">
+  <p class="section-title">Balance de obras</p>
+  <p class="section-sub">Ingresos, egresos y balance por proyecto</p>
+  <div id="obras-content"><div class="loading-state"><div class="spinner"></div>Cargando datos...</div></div>
+</div>
+
+<!-- PROVEEDORES -->
+<div id="s-proveedores" class="section">
+  <p class="section-title">Resumen estado de obras</p>
+  <p class="section-sub">Presupuestos, adicionales y pagos por proveedor y obra</p>
+  <div class="stat-grid stat-grid-3" id="prov-stats">
+    <div class="stat-card"><div class="stat-label">Presupuestado</div><div class="stat-value blue" id="ps-pres">$ —</div></div>
+    <div class="stat-card"><div class="stat-label">Adicionales</div><div class="stat-value amber" id="ps-adic">$ —</div></div>
+    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value" id="ps-total">$ —</div></div>
+  </div>
+  <div style="display:flex;gap:12px;align-items:center;margin-bottom:24px">
+    <select id="obraSelect" onchange="renderProveedores()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 32px 8px 12px;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;min-width:280px">
+      <option value="">Todas las obras</option>
+    </select>
+    <button class="btn btn-outline" onclick="exportarCSV()">Exportar CSV</button>
+  </div>
+  <div class="table-wrap">
+    <div class="table-header">
+      <span class="table-title-sm">Detalle por proveedor</span>
+      <span style="font-size:11px;color:var(--text-faint);font-family:'DM Mono',monospace" id="prov-count"></span>
+    </div>
+    <div id="prov-table"><div class="loading-state"><div class="spinner"></div>Cargando...</div></div>
+  </div>
+</div>
+
+<!-- SUELDOS -->
+<div id="s-sueldos" class="section">
+  <p class="section-title">Sueldos</p>
+  <p class="section-sub">Pagos por empleado en los últimos 4 meses</p>
+  <div class="stat-grid stat-grid-4" id="sueldo-stats" style="margin-bottom:24px"></div>
+  <div class="table-wrap">
+    <div class="table-header">
+      <span class="table-title-sm">Detalle por empleado</span>
+    </div>
+    <div id="sueldo-table"><div class="loading-state"><div class="spinner"></div>Cargando...</div></div>
+  </div>
+</div>
+</main>
+
+<!-- CARGAR DATOS -->
+<div id="s-cargar" class="section">
+  <p class="section-title">Cargar datos</p>
+  <p class="section-sub">Accesos rápidos a los formularios de carga — se abre en una nueva pestaña</p>
+  <div style="display:flex;flex-direction:column;gap:12px;max-width:560px;margin-bottom:32px">
+    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagBakEKQtzM4guSn/form" target="_blank">
+      <div class="form-card-icon" style="background:#EEF4FB;color:#1B4F8A">$</div>
+      <div>
+        <div class="form-card-title">Nuevo movimiento</div>
+        <div class="form-card-sub">Registrar ingreso o egreso del estudio</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>
+    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagpjnM7H7dW7kEaF/form" target="_blank">
+      <div class="form-card-icon" style="background:#EEF8F2;color:#1B6B3A">⌂</div>
+      <div>
+        <div class="form-card-title">Nueva obra</div>
+        <div class="form-card-sub">Dar de alta un nuevo proyecto</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>
+    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagYfjbps8AaSCdFg/form" target="_blank">
+      <div class="form-card-icon" style="background:#FBF4EE;color:#8A5A1B">⚒</div>
+      <div>
+        <div class="form-card-title">Nuevo proveedor</div>
+        <div class="form-card-sub">Cargar proveedor y presupuesto de obra</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>
+    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagxdvo8HqSnRVxDe/form" target="_blank">
+      <div class="form-card-icon" style="background:#FBEEEE;color:#8A1B1B">+</div>
+      <div>
+        <div class="form-card-title">Nuevo adicional</div>
+        <div class="form-card-sub">Registrar imprevisto o adicional de obra</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>
+    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pageYr0i6BYMmD8Dw/form" target="_blank">
+      <div class="form-card-icon" style="background:#F1EFE8;color:#5F5E5A">👤</div>
+      <div>
+        <div class="form-card-title">Nuevo empleado</div>
+        <div class="form-card-sub">Agregar integrante al estudio</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>
+  </div>
+</div>
+
+<!-- Modal config -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Configuración de Airtable</h2>
+    <p>Ingresá tu Personal Access Token de Airtable. Necesita los scopes: data.records:read y schema.bases:read.</p>
+    <div class="field-group">
+      <label class="field-label">Personal Access Token</label>
+      <input type="password" id="inputApiKey" placeholder="patXXXXXXXXXXXXXX..."/>
+      <p class="hint">Se guarda solo en este navegador.</p>
+    </div>
+    <div class="field-group">
+      <label class="field-label">Base ID</label>
+      <input type="text" id="inputBaseId" value="appYefsAUNtFp4pfY"/>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="cerrarConfig()">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarConfig()">Guardar y cargar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PROXY = 'https://wandering-sound-8f28.nicolasgmontaner.workers.dev';
+const BASE_ID = 'appYefsAUNtFp4pfY';
+const TABLES = {
+  dashboard: 'tbl6rCGU4vPkkFaVs',
+  obras: 'tblkUEc7cYCBLMULL',
+  empleados: 'tblLgTz0esYXhd8aO',
+  proveedores: 'tblkxAIwpWMP30gT2'
+};
+
+let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [] };
+let currentSection = 'resumen';
+
+// --- Config ---
+function getConfig() {
+  return {
+    apiKey: localStorage.getItem('arqtech_key') || '',
+    baseId: localStorage.getItem('arqtech_base') || BASE_ID
+  };
+}
+function abrirConfig() {
+  const c = getConfig();
+  document.getElementById('inputApiKey').value = c.apiKey;
+  document.getElementById('inputBaseId').value = c.baseId;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function cerrarConfig() { document.getElementById('modalOverlay').classList.remove('open'); }
+function guardarConfig() {
+  const key = document.getElementById('inputApiKey').value.trim();
+  const base = document.getElementById('inputBaseId').value.trim();
+  if (!key) { alert('Ingresá tu token de Airtable.'); return; }
+  localStorage.setItem('arqtech_key', key);
+  localStorage.setItem('arqtech_base', base);
+  cerrarConfig();
+  cargarTodo();
+}
+
+// --- Nav ---
+function showSection(id) {
+  currentSection = id;
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('s-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// --- Fetch ---
+async function fetchTable(tableId) {
+  const cfg = getConfig();
+  let all = [], offset = '';
+  do {
+    const url = `${PROXY}/v0/${cfg.baseId}/${tableId}${offset ? '?offset=' + offset : ''}`;
+    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${cfg.apiKey}` } });
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const data = await res.json();
+    all = all.concat(data.records || []);
+    offset = data.offset || '';
+  } while (offset);
+  return all;
+}
+
+// --- Format ---
+function fmt(n) {
+  if (!n && n !== 0) return '—';
+  return '$ ' + Math.round(n).toLocaleString('es-AR');
+}
+function fmtMes(yyyymm) {
+  if (!yyyymm) return '';
+  const [y, m] = yyyymm.split('-');
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  return meses[parseInt(m)-1] + ' ' + y;
+}
+function mesActual() {
+  const n = new Date();
+  return n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0');
+}
+function mesesAnteriores(n) {
+  const result = [];
+  const d = new Date();
+  for (let i = n; i >= 0; i--) {
+    const dt = new Date(d.getFullYear(), d.getMonth() - i, 1);
+    result.push(dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0'));
+  }
+  return result;
+}
+
+// --- RESUMEN ---
+function renderResumen() {
+  const mov = DATA.dashboard;
+  const mes = mesActual();
+  const movMes = mov.filter(r => r.fields.mes_anio === mes);
+
+  const ingresosMes = movMes.filter(r => r.fields.tipo_de_movimiento === 'Ingreso').reduce((s,r) => s + (r.fields.monto||0), 0);
+  const egresosMes = movMes.filter(r => r.fields.tipo_de_movimiento === 'Egreso').reduce((s,r) => s + (r.fields.monto||0), 0);
+  const balanceMes = ingresosMes - egresosMes;
+
+  const obrasMes = movMes.filter(r => r.fields.origen === 'Obras');
+  const balanceObras = obrasMes.filter(r=>r.fields.tipo_de_movimiento==='Ingreso').reduce((s,r)=>s+(r.fields.monto||0),0)
+                     - obrasMes.filter(r=>r.fields.tipo_de_movimiento==='Egreso').reduce((s,r)=>s+(r.fields.monto||0),0);
+  const sueldosMes = movMes.filter(r=>r.fields.origen==='Sueldos').reduce((s,r)=>s+(r.fields.monto||0),0);
+  const otrosMes = movMes.filter(r=>r.fields.origen!=='Obras'&&r.fields.origen!=='Sueldos').reduce((s,r)=>{
+    const v = r.fields.tipo_de_movimiento==='Ingreso'?(r.fields.monto||0):-(r.fields.monto||0);
+    return s+v;
+  },0);
+
+  // Evolutivo 6 meses
+  const meses6 = mesesAnteriores(5);
+  const evolData = meses6.map(m => {
+    const r = mov.filter(x => x.fields.mes_anio === m);
+    const ing = r.filter(x=>x.fields.tipo_de_movimiento==='Ingreso').reduce((s,x)=>s+(x.fields.monto||0),0);
+    const eg = r.filter(x=>x.fields.tipo_de_movimiento==='Egreso').reduce((s,x)=>s+(x.fields.monto||0),0);
+    return { mes: m, ing, eg, bal: ing - eg };
+  });
+
+  // Últimos movimientos
+  const ultimos = [...mov].sort((a,b) => (b.fields.fecha||'').localeCompare(a.fields.fecha||'')).slice(0, 10);
+
+  // Egresos por origen
+  const egresosPorOrigen = {};
+  movMes.filter(r=>r.fields.tipo_de_movimiento==='Egreso').forEach(r => {
+    const o = r.fields.origen || 'Otros';
+    egresosPorOrigen[o] = (egresosPorOrigen[o]||0) + (r.fields.monto||0);
+  });
+
+  document.getElementById('resumen-sub').textContent = `Mes corriente: ${fmtMes(mes)}`;
+
+  document.getElementById('resumen-content').innerHTML = `
+    <div class="stat-grid stat-grid-3" style="margin-bottom:16px">
+      <div class="stat-card"><div class="stat-label">Balance del mes</div><div class="stat-value ${balanceMes>=0?'green':'red'}">${fmt(balanceMes)}</div></div>
+      <div class="stat-card"><div class="stat-label">Ingresos del mes</div><div class="stat-value blue">${fmt(ingresosMes)}</div></div>
+      <div class="stat-card"><div class="stat-label">Egresos del mes</div><div class="stat-value red">${fmt(egresosMes)}</div></div>
+    </div>
+    <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:24px">
+      <div class="stat-card"><div class="stat-label">Balance obras</div><div class="stat-value ${balanceObras>=0?'green':'red'}">${fmt(balanceObras)}</div></div>
+      <div class="stat-card"><div class="stat-label">Sueldos</div><div class="stat-value red">${fmt(sueldosMes)}</div></div>
+      ${Object.entries(egresosPorOrigen).filter(([k])=>k!=='Obras'&&k!=='Sueldos').map(([k,v])=>`<div class="stat-card"><div class="stat-label">${k}</div><div class="stat-value amber">${fmt(v)}</div></div>`).join('')}
+    </div>
+    <div class="chart-full">
+      <div class="chart-title">Evolutivo mensual — últimos 6 meses</div>
+      <canvas id="chartEvol" height="80"></canvas>
+    </div>
+    <div class="chart-grid" style="grid-template-columns:1fr 1fr 1fr;max-width:none">
+      <div class="chart-wrap">
+        <div class="chart-title">Movimientos del mes</div>
+        <canvas id="chartTorta1" height="55"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Gastos por origen</div>
+        <canvas id="chartTorta2" height="55"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Detalle de gastos</div>
+        <canvas id="chartBarras" height="55"></canvas>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><span class="table-title-sm">Últimos movimientos</span></div>
+      <table>
+        <thead><tr>
+          <th>Fecha</th><th>Concepto</th><th>Origen</th><th>Tipo</th><th class="num">Monto</th>
+        </tr></thead>
+        <tbody>
+          ${ultimos.map(r => `<tr>
+            <td class="mono">${r.fields.fecha||''}</td>
+            <td>${r.fields.concepto||'—'}</td>
+            <td><span class="tag tag-gray">${r.fields.origen||'—'}</span></td>
+            <td><span class="tag ${r.fields.tipo_de_movimiento==='Ingreso'?'tag-green':'tag-red'}">${r.fields.tipo_de_movimiento||'—'}</span></td>
+            <td class="num mono" style="color:${r.fields.tipo_de_movimiento==='Ingreso'?'var(--green)':'var(--red)'}">${fmt(r.fields.monto)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+
+  // Chart evolutivo
+  new Chart(document.getElementById('chartEvol'), {
+    type: 'bar',
+    data: {
+      labels: evolData.map(d => fmtMes(d.mes)),
+      datasets: [
+        { label: 'Ingresos', data: evolData.map(d=>d.ing), backgroundColor: '#B5D4F4', borderRadius: 4, order: 1 },
+        { label: 'Egresos', data: evolData.map(d=>d.eg), backgroundColor: '#F0957B', borderRadius: 4, order: 2 },
+        { label: 'Balance', data: evolData.map(d=>d.bal), type: 'line', borderColor: '#1A1814', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#1A1814', tension: 0.3, order: 0, z: 10 }
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } }, scales: { y: { ticks: { callback: v => '$ ' + (v/1000000).toFixed(1) + 'M', font: { family: 'DM Mono', size: 11 } }, grid: { color: '#E8E4DC' } }, x: { ticks: { font: { family: 'DM Sans', size: 11 } }, grid: { display: false } } } }
+  });
+
+  // Torta 1 - ingresos vs egresos
+  new Chart(document.getElementById('chartTorta1'), {
+    type: 'doughnut',
+    data: {
+      labels: ['Ingresos', 'Egresos'],
+      datasets: [{ data: [ingresosMes, egresosMes], backgroundColor: ['#9FE1CB', '#F09597'], borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } } }
+  });
+
+  // Torta 2 - egresos por origen
+  const origenes = Object.keys(egresosPorOrigen);
+  const colores = ['#B5D4F4','#F0957B','#9FE1CB','#FACB80','#C0DD97','#F4C0D1'];
+  new Chart(document.getElementById('chartTorta2'), {
+    type: 'doughnut',
+    data: {
+      labels: origenes,
+      datasets: [{ data: origenes.map(o=>egresosPorOrigen[o]), backgroundColor: colores.slice(0,origenes.length), borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } } }
+  });
+
+  // Barras horizontales - detalle montos por origen
+  const origenesSort = Object.entries(egresosPorOrigen).sort((a,b)=>b[1]-a[1]);
+  new Chart(document.getElementById('chartBarras'), {
+    type: 'bar',
+    data: {
+      labels: origenesSort.map(([k])=>k),
+      datasets: [{ data: origenesSort.map(([,v])=>v), backgroundColor: colores.slice(0,origenesSort.length), borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { callback: v=>'$'+(v/1000000).toFixed(1)+'M', font:{family:'DM Mono',size:10} }, grid:{color:'#E8E4DC'} },
+        y: { ticks: { font:{family:'DM Sans',size:11} }, grid:{display:false} }
+      }
+    }
+  });
+}
+
+// --- OBRAS ---
+function renderObras() {
+  const obras = DATA.obras;
+  if (!obras.length) { document.getElementById('obras-content').innerHTML = '<div class="empty-state">No hay obras cargadas.</div>'; return; }
+
+  const html = `<div class="obras-grid">${obras.map(o => {
+    const f = o.fields;
+    const ing = f.total_ingresos || 0;
+    const eg = f.total_egresos || 0;
+    const bal = f.total_balance || (ing - eg);
+    const cat = f.Categoría?.name || f.Categoría || '';
+    return `<div class="obra-card">
+      <div style="min-height:48px;margin-bottom:8px">
+        <div class="obra-card-name">${f.nombre||'—'}</div>
+      </div>
+      ${cat?`<div style="margin-bottom:14px"><span class="tag tag-blue">${cat}</span></div>`:'<div style="margin-bottom:14px"></div>'}
+      <div style="background:${bal>=0?'#EEF8F2':'#FBEEEE'};border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:${bal>=0?'var(--green)':'var(--red)'}">Balance</div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:${bal>=0?'var(--green)':'var(--red)'};">${fmt(bal)}</div>
+      </div>
+      <div class="obra-card-stats" style="grid-template-columns:1fr 1fr">
+        <div class="obra-stat">
+          <div class="obra-stat-label">Ingresos</div>
+          <div class="obra-stat-value" style="color:var(--green);white-space:nowrap">${fmt(ing)}</div>
+        </div>
+        <div class="obra-stat">
+          <div class="obra-stat-label">Egresos</div>
+          <div class="obra-stat-value" style="color:var(--red);white-space:nowrap">${fmt(eg)}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+
+  document.getElementById('obras-content').innerHTML = html;
+}
+
+// --- PROVEEDORES ---
+function renderProveedores() {
+  const filtro = document.getElementById('obraSelect')?.value || '';
+  const todos = DATA.proveedores;
+  const filtered = filtro ? todos.filter(r => r.fields.obra === filtro) : todos;
+
+  // Presupuesto y adicionales usan monto_cliente (lo que se cobra al cliente)
+  // Pagado usa ingresos de DASHBOARD de origen Obras por obra
+  const map = {};
+  filtered.forEach(r => {
+    const f = r.fields;
+    const key = (f.obra||'') + '|||' + (f.proveedor||'');
+    if (!map[key]) map[key] = { obra: f.obra||'', proveedor: f.proveedor||'—', rubro: f.rubro||'', pres: 0, adic: 0, pag: 0 };
+    if (f.rubro && !map[key].rubro) map[key].rubro = f.rubro;
+    const tipo = (f.tipo||'').toLowerCase();
+    if (tipo.includes('presupuesto')) map[key].pres += (f.monto_cliente||0);
+    else if (tipo.includes('adicional')) map[key].adic += (f.monto_cliente||0);
+    // pagos NO vienen de RESUMEN_PROVEEDORES sino de DASHBOARD (ingresos por obra)
+  });
+
+  // Calcular pagado por obra desde DASHBOARD (ingresos de Obras)
+  const pagadoPorObra = {};
+  DATA.dashboard.forEach(r => {
+    const f = r.fields;
+    if ((f.origen||'') === 'Obras' && (f.tipo_de_movimiento||'') === 'Ingreso') {
+      const obra = f.obra_nombre || '';
+      pagadoPorObra[obra] = (pagadoPorObra[obra]||0) + (f.monto||0);
+    }
+  });
+
+  // Asignar pagado proporcional por proveedor dentro de cada obra
+  // Como el pago es a nivel obra, lo mostramos a nivel obra (agrupado)
+  // Si hay un solo proveedor en la obra, le asignamos todo
+  // Si hay varios, distribuimos proporcionalmente según presupuesto
+  const obraProveedores = {};
+  Object.values(map).forEach(r => {
+    if (!obraProveedores[r.obra]) obraProveedores[r.obra] = [];
+    obraProveedores[r.obra].push(r);
+  });
+
+  Object.entries(obraProveedores).forEach(([obra, provs]) => {
+    const totalCobrado = pagadoPorObra[obra] || 0;
+    const totalPres = provs.reduce((s,p) => s + p.pres + p.adic, 0);
+    provs.forEach(p => {
+      if (totalPres > 0) {
+        p.pag = Math.round(totalCobrado * (p.pres + p.adic) / totalPres);
+      } else {
+        p.pag = provs.length === 1 ? totalCobrado : 0;
+      }
+    });
+  });
+
+  const rows = Object.values(map).sort((a,b) => a.proveedor.localeCompare(b.proveedor));
+
+  // Stats
+  const totP = rows.reduce((s,r)=>s+r.pres,0);
+  const totA = rows.reduce((s,r)=>s+r.adic,0);
+  const totPag = rows.reduce((s,r)=>s+r.pag,0);
+  const totS = (totP+totA)-totPag;
+  document.getElementById('ps-pres').textContent = fmt(totP);
+  document.getElementById('ps-adic').textContent = fmt(totA);
+  document.getElementById('ps-total').textContent = fmt(totP + totA);
+  document.getElementById('prov-count').textContent = `${rows.length} proveedor${rows.length!==1?'es':''}`;
+
+  if (!rows.length) { document.getElementById('prov-table').innerHTML = '<div class="empty-state">No hay registros.</div>'; return; }
+
+  let html = `<table><thead><tr>
+    <th>Proveedor</th><th class="num">Presupuesto inicial</th><th class="num">Adicionales</th><th class="num">Total</th>
+  </tr></thead><tbody>`;
+  let tP=0,tA=0,tPag=0;
+  rows.forEach(r => {
+    const saldo = (r.pres+r.adic)-r.pag;
+    tP+=r.pres;tA+=r.adic;tPag+=r.pag;
+    html += `<tr>
+      <td><div style="font-weight:500;font-size:13px">${r.proveedor}</div>${r.rubro?`<div style="display:inline-block;font-size:10px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:4px;background:var(--bg);color:var(--text-muted);border:1px solid var(--border);margin-top:3px">${r.rubro}</div>`:''}</td>
+      <td class="num mono">${fmt(r.pres)}</td>
+      <td class="num mono" style="color:${r.adic?'var(--amber)':'var(--text-faint)'}">${r.adic?fmt(r.adic):'—'}</td>
+      <td class="num mono" style="font-weight:500">${fmt(r.pres+r.adic)}</td>
+    </tr>`;
+  });
+  const tS=(tP+tA)-tPag;
+  html+=`</tbody><tfoot><tr><td>Total</td><td class="num">${fmt(tP)}</td><td class="num" style="color:var(--amber)">${fmt(tA)}</td><td class="num" style="font-weight:500">${fmt(tP+tA)}</td></tr></tfoot></table>`;
+  document.getElementById('prov-table').innerHTML = html;
+}
+
+function poblarSelectorObras() {
+  const obras = [...new Set(DATA.proveedores.map(r=>r.fields.obra).filter(Boolean))].sort();
+  const sel = document.getElementById('obraSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Todas las obras</option>' + obras.map(o=>`<option value="${o}">${o}</option>`).join('');
+}
+
+function exportarCSV() {
+  const filtro = document.getElementById('obraSelect')?.value||'';
+  const todos = DATA.proveedores;
+  const filtered = filtro ? todos.filter(r=>r.fields.obra===filtro) : todos;
+  const map = {};
+  filtered.forEach(r=>{
+    const f=r.fields;const key=(f.obra||'')+'|||'+(f.proveedor||'');
+    if(!map[key])map[key]={obra:f.obra||'',proveedor:f.proveedor||'—',rubro:f.rubro||'',pres:0,adic:0,pag:0};
+    const tipo=(f.tipo||'').toLowerCase();
+    if(tipo.includes('presupuesto'))map[key].pres+=(f.monto_cliente||0);
+    else if(tipo.includes('adicional'))map[key].adic+=(f.monto_cliente||0);
+  });
+  const pagadoPorObraCSV = {};
+  DATA.dashboard.forEach(r => {
+    const f = r.fields;
+    if ((f.origen||'') === 'Obras' && (f.tipo_de_movimiento||'') === 'Ingreso') {
+      const obra = f.obra_nombre || '';
+      pagadoPorObraCSV[obra] = (pagadoPorObraCSV[obra]||0) + (f.monto||0);
+    }
+  });
+  const obraProvsCSV = {};
+  Object.values(map).forEach(r => { if(!obraProvsCSV[r.obra])obraProvsCSV[r.obra]=[];obraProvsCSV[r.obra].push(r); });
+  Object.entries(obraProvsCSV).forEach(([obra,provs]) => {
+    const totalCobrado = pagadoPorObraCSV[obra]||0;
+    const totalPres = provs.reduce((s,p)=>s+p.pres+p.adic,0);
+    provs.forEach(p => { p.pag = totalPres>0 ? Math.round(totalCobrado*(p.pres+p.adic)/totalPres) : (provs.length===1?totalCobrado:0); });
+  });
+  const rows=Object.values(map);
+  let csv='Obra,Proveedor,Rubro,Presupuesto inicial,Adicionales,Pagado,Saldo pendiente\n';
+  rows.forEach(r=>{const s=(r.pres+r.adic)-r.pag;csv+=`"${r.obra}","${r.proveedor}","${r.rubro}",${r.pres},${r.adic},${r.pag},${s}\n`;});
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='proveedores.csv';a.click();
+}
+
+// --- SUELDOS ---
+function renderSueldos() {
+  const meses = mesesAnteriores(3); // 4 meses: mes-3, mes-2, mes-1, mes actual
+  const mov = DATA.dashboard.filter(r => r.fields.origen === 'Sueldos');
+  const empleados = DATA.empleados;
+
+  // Total por mes
+  const totalPorMes = meses.map(m => mov.filter(r=>r.fields.mes_anio===m).reduce((s,r)=>s+(r.fields.monto||0),0));
+
+  // Stats por mes
+  document.getElementById('sueldo-stats').innerHTML = meses.map((m,i) => `
+    <div class="stat-card">
+      <div class="stat-label">${fmtMes(m)}</div>
+      <div class="stat-value red">${fmt(totalPorMes[i])}</div>
+    </div>`).join('');
+
+  // Tabla: una fila por empleado, columnas por mes
+  // Buscar pagos por nombre de empleado en comentario o en empleado_id
+  // Como los movimientos en DASHBOARD tienen empleado_id como link, buscamos por nombre
+  const rows = empleados.map(e => {
+    const nombre = e.fields.nombre_apellido || '—';
+    const rol = e.fields.Rol || '';
+    const pagos = meses.map(m => {
+      // Buscar en DATA.dashboard movimientos de sueldos de este mes
+      // que coincidan con el empleado — usamos el campo concepto o comparamos por nombre
+      const total = mov.filter(r => {
+        if (r.fields.mes_anio !== m) return false;
+        // intentamos matchear por concepto o comentario
+        const concepto = (r.fields.concepto || '').toLowerCase();
+        const comment = (r.fields.comentario || '').toLowerCase();
+        const nombreLower = nombre.toLowerCase();
+        return concepto.includes(nombreLower.split(' ')[0].toLowerCase()) || 
+               comment.includes(nombreLower.split(' ')[0].toLowerCase()) ||
+               r.fields.monto > 0; // fallback: suma todos si hay solo uno
+      });
+      // Si hay varios empleados, repartir equitativamente no funciona bien
+      // Mejor: sumar todo de sueldos del mes y dividir por empleados (approximación MVP)
+      return null; // se calcula diferente abajo
+    });
+    return { nombre, rol };
+  });
+
+  // Approach más simple para MVP: mostrar total de sueldos por mes en una fila,
+  // y si hay registros con concepto que incluya nombre del empleado, mostrarlo
+  let html = `<div class="sueldo-table-wrap"><table><thead><tr>
+    <th>Empleado</th><th>Rol</th>
+    ${meses.map(m=>`<th class="num">${fmtMes(m)}</th>`).join('')}
+  </tr></thead><tbody>`;
+
+  empleados.forEach(e => {
+    const nombre = e.fields.nombre_apellido || '—';
+    const rol = e.fields.Rol || '—';
+    const pagosMes = meses.map(m => {
+      const total = mov.filter(r => {
+        if (r.fields.mes_anio !== m) return false;
+        const concepto = (r.fields.concepto || r.fields.comentario || '').toLowerCase();
+        const palabras = nombre.toLowerCase().split(' ');
+        return palabras.some(p => p.length > 3 && concepto.includes(p));
+      }).reduce((s,r)=>s+(r.fields.monto||0),0);
+      return total;
+    });
+    html += `<tr>
+      <td><div style="font-weight:500">${nombre}</div></td>
+      <td style="color:var(--text-muted);font-size:12px">${rol}</td>
+      ${pagosMes.map(p=>`<td class="num mono" style="color:${p>0?'var(--red)':'var(--text-faint)'}">${p>0?fmt(p):'—'}</td>`).join('')}
+    </tr>`;
+  });
+
+  // Fila de totales
+  html += `</tbody><tfoot><tr><td>Total</td><td></td>${meses.map((m,i)=>`<td class="num">${fmt(totalPorMes[i])}</td>`).join('')}</tr></tfoot></table></div>`;
+  document.getElementById('sueldo-table').innerHTML = html;
+}
+
+// --- CARGA PRINCIPAL ---
+async function cargarTodo() {
+  const cfg = getConfig();
+  if (!cfg.apiKey) { abrirConfig(); return; }
+
+  try {
+    const [dashboard, obras, empleados, proveedores] = await Promise.all([
+      fetchTable(TABLES.dashboard),
+      fetchTable(TABLES.obras),
+      fetchTable(TABLES.empleados),
+      fetchTable(TABLES.proveedores)
+    ]);
+
+    DATA = { dashboard, obras, empleados, proveedores };
+
+    // Destruir charts anteriores
+    Chart.helpers.each(Chart.instances, c => c.destroy());
+
+    renderResumen();
+    renderObras();
+    poblarSelectorObras();
+    renderProveedores();
+    renderSueldos();
+
+    document.getElementById('lastUpdate').textContent = `Actualizado ${new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`;
+  } catch(e) {
+    document.getElementById('resumen-content').innerHTML = `<div class="error-state">Error al cargar: ${e.message}</div>`;
+  }
+}
+
+function recargar() { cargarTodo(); }
+
+window.addEventListener('keydown', e => { if(e.key==='Escape') cerrarConfig(); });
+document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target===e.currentTarget) cerrarConfig(); });
+
+window.addEventListener('load', () => {
+  const key = localStorage.getItem('arqtech_key');
+  if (key) setTimeout(cargarTodo, 300);
+  else { setTimeout(abrirConfig, 500); }
+});
+</script>
+</body>
+</html>
