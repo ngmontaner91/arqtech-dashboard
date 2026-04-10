@@ -114,6 +114,12 @@ input:focus{outline:none;border-color:var(--border-strong)}
 .spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .last-update{font-size:11px;color:var(--text-faint);font-family:'DM Mono',monospace}
+.form-card{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;text-decoration:none;color:var(--text);transition:all .15s;cursor:pointer}
+.form-card:hover{border-color:var(--border-strong);transform:translateY(-1px)}
+.form-card-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;font-weight:500}
+.form-card-title{font-size:14px;font-weight:500;margin-bottom:3px}
+.form-card-sub{font-size:12px;color:var(--text-muted)}
+.form-card-arrow{margin-left:auto;font-size:16px;color:var(--text-faint);flex-shrink:0}
 </style>
 </head>
 <body>
@@ -125,6 +131,7 @@ input:focus{outline:none;border-color:var(--border-strong)}
     <button class="nav-btn" onclick="showSection('obras')">Obras</button>
     <button class="nav-btn" onclick="showSection('proveedores')">Estado obras</button>
     <button class="nav-btn" onclick="showSection('sueldos')">Sueldos</button>
+    <button class="nav-btn" onclick="showSection('cargar')">+ Cargar</button>
   </nav>
   <div class="header-right">
     <span class="last-update" id="lastUpdate"></span>
@@ -185,6 +192,54 @@ input:focus{outline:none;border-color:var(--border-strong)}
   </div>
 </div>
 </main>
+
+<!-- CARGAR DATOS -->
+<div id="s-cargar" class="section">
+  <p class="section-title">Cargar datos</p>
+  <p class="section-sub">Accesos rápidos a los formularios de carga</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:32px">
+    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagBakEKQtzM4guSn/form" target="_blank">
+      <div class="form-card-icon" style="background:#EEF4FB;color:#1B4F8A">$</div>
+      <div>
+        <div class="form-card-title">Nuevo movimiento</div>
+        <div class="form-card-sub">Registrar ingreso o egreso del estudio</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>
+    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagpjnM7H7dW7kEaF/form" target="_blank">
+      <div class="form-card-icon" style="background:#EEF8F2;color:#1B6B3A">⌂</div>
+      <div>
+        <div class="form-card-title">Nueva obra</div>
+        <div class="form-card-sub">Dar de alta un nuevo proyecto</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>
+    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagYfjbps8AaSCdFg/form" target="_blank">
+      <div class="form-card-icon" style="background:#FBF4EE;color:#8A5A1B">⚒</div>
+      <div>
+        <div class="form-card-title">Nuevo proveedor</div>
+        <div class="form-card-sub">Cargar proveedor y presupuesto de obra</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>
+    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagxdvo8HqSnRVxDe/form" target="_blank">
+      <div class="form-card-icon" style="background:#FBEEEE;color:#8A1B1B">+</div>
+      <div>
+        <div class="form-card-title">Nuevo adicional</div>
+        <div class="form-card-sub">Registrar imprevisto o adicional de obra</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>
+    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pageYr0i6BYMmD8Dw/form" target="_blank">
+      <div class="form-card-icon" style="background:#F1EFE8;color:#5F5E5A">👤</div>
+      <div>
+        <div class="form-card-title">Nuevo empleado</div>
+        <div class="form-card-sub">Agregar integrante al estudio</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>
+  </div>
+</div>
 
 <!-- Modal config -->
 <div class="modal-overlay" id="modalOverlay">
@@ -348,7 +403,7 @@ function renderResumen() {
       <div class="chart-title">Evolutivo mensual — últimos 6 meses</div>
       <canvas id="chartEvol" height="80"></canvas>
     </div>
-    <div class="chart-grid">
+    <div class="chart-grid" style="grid-template-columns:1fr 1fr 1fr;max-width:none">
       <div class="chart-wrap">
         <div class="chart-title">Movimientos del mes</div>
         <canvas id="chartTorta1" height="55"></canvas>
@@ -356,6 +411,10 @@ function renderResumen() {
       <div class="chart-wrap">
         <div class="chart-title">Gastos por origen</div>
         <canvas id="chartTorta2" height="55"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Detalle de gastos</div>
+        <canvas id="chartBarras" height="55"></canvas>
       </div>
     </div>
     <div class="table-wrap">
@@ -410,6 +469,25 @@ function renderResumen() {
       datasets: [{ data: origenes.map(o=>egresosPorOrigen[o]), backgroundColor: colores.slice(0,origenes.length), borderWidth: 0, hoverOffset: 4 }]
     },
     options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } } }
+  });
+
+  // Barras horizontales - detalle montos por origen
+  const origenesSort = Object.entries(egresosPorOrigen).sort((a,b)=>b[1]-a[1]);
+  new Chart(document.getElementById('chartBarras'), {
+    type: 'bar',
+    data: {
+      labels: origenesSort.map(([k])=>k),
+      datasets: [{ data: origenesSort.map(([,v])=>v), backgroundColor: colores.slice(0,origenesSort.length), borderRadius: 4, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { callback: v=>'$'+(v/1000000).toFixed(1)+'M', font:{family:'DM Mono',size:10} }, grid:{color:'#E8E4DC'} },
+        y: { ticks: { font:{family:'DM Sans',size:11} }, grid:{display:false} }
+      }
+    }
   });
 }
 
