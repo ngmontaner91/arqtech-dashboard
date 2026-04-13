@@ -135,7 +135,6 @@ input:focus{outline:none;border-color:var(--border-strong)}
   </nav>
   <div class="header-right">
     <span class="last-update" id="lastUpdate"></span>
-    <button class="btn btn-outline" onclick="abrirConfig()">API</button>
     <button class="btn btn-solid" onclick="recargar()">↺ Actualizar</button>
   </div>
 </header>
@@ -315,7 +314,7 @@ async function fetchTable(tableId) {
   let all = [], offset = '';
   do {
     const url = `${PROXY}/v0/${cfg.baseId}/${tableId}${offset ? '?offset=' + offset : ''}`;
-    const res = await fetch(url, { headers: { 'Authorization': `Bearer ${cfg.apiKey}` } });
+    const res = await fetch(url);
     if (!res.ok) throw new Error(`Error ${res.status}`);
     const data = await res.json();
     all = all.concat(data.records || []);
@@ -730,7 +729,6 @@ function renderSueldos() {
 // --- CARGA PRINCIPAL ---
 async function cargarTodo() {
   const cfg = getConfig();
-  if (!cfg.apiKey) { abrirConfig(); return; }
 
   try {
     const [dashboard, obras, empleados, proveedores] = await Promise.all([
@@ -763,9 +761,7 @@ window.addEventListener('keydown', e => { if(e.key==='Escape') cerrarConfig(); }
 document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target===e.currentTarget) cerrarConfig(); });
 
 window.addEventListener('load', () => {
-  const key = localStorage.getItem('arqtech_key');
-  if (key) setTimeout(cargarTodo, 300);
-  else { setTimeout(abrirConfig, 500); }
+  setTimeout(cargarTodo, 300);
 });
 </script>
 </body>
