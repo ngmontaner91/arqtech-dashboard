@@ -264,7 +264,7 @@ input:focus{outline:none;border-color:var(--border-strong)}
 
 <script>
 const PROXY = 'https://wandering-sound-8f28.nicolasgmontaner.workers.dev';
-const BASE_ID = 'appYefsAUNtFp4pfY';
+const BASE_ID_DEFAULT = 'appYefsAUNtFp4pfY';
 const TABLES = {
   dashboard: 'tbl6rCGU4vPkkFaVs',
   obras: 'tblkUEc7cYCBLMULL',
@@ -275,28 +275,10 @@ const TABLES = {
 let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [] };
 let currentSection = 'resumen';
 
-// --- Config ---
-function getConfig() {
-  return {
-    apiKey: localStorage.getItem('arqtech_key') || '',
-    baseId: localStorage.getItem('arqtech_base') || BASE_ID
-  };
-}
-function abrirConfig() {
-  const c = getConfig();
-  document.getElementById('inputApiKey').value = c.apiKey;
-  document.getElementById('inputBaseId').value = c.baseId;
-  document.getElementById('modalOverlay').classList.add('open');
-}
-function cerrarConfig() { document.getElementById('modalOverlay').classList.remove('open'); }
-function guardarConfig() {
-  const key = document.getElementById('inputApiKey').value.trim();
-  const base = document.getElementById('inputBaseId').value.trim();
-  if (!key) { alert('Ingresá tu token de Airtable.'); return; }
-  localStorage.setItem('arqtech_key', key);
-  localStorage.setItem('arqtech_base', base);
-  cerrarConfig();
-  cargarTodo();
+// Lee el Base ID desde ?base=appXXXX en la URL, o usa el default (tu estudio)
+function getBaseId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('base') || BASE_ID_DEFAULT;
 }
 
 // --- Nav ---
@@ -310,10 +292,9 @@ function showSection(id) {
 
 // --- Fetch ---
 async function fetchTable(tableId) {
-  const cfg = getConfig();
   let all = [], offset = '';
   do {
-    const url = `${PROXY}/v0/${cfg.baseId}/${tableId}${offset ? '?offset=' + offset : ''}`;
+    const url = `${PROXY}/v0/${getBaseId()}/${tableId}${offset ? '?offset=' + offset : ''}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Error ${res.status}`);
     const data = await res.json();
@@ -728,8 +709,6 @@ function renderSueldos() {
 
 // --- CARGA PRINCIPAL ---
 async function cargarTodo() {
-  const cfg = getConfig();
-
   try {
     const [dashboard, obras, empleados, proveedores] = await Promise.all([
       fetchTable(TABLES.dashboard),
