@@ -267,13 +267,12 @@ const PROXY = 'https://wandering-sound-8f28.nicolasgmontaner.workers.dev';
 const BASE_ID_DEFAULT = 'appYefsAUNtFp4pfY';
 const TABLES = {
   dashboard: 'tbl6rCGU4vPkkFaVs',
-  base: 'tblVmAfvaqTw6aJaj',
   obras: 'tblkUEc7cYCBLMULL',
   empleados: 'tblLgTz0esYXhd8aO',
   proveedores: 'tblkxAIwpWMP30gT2'
 };
 
-let DATA = { dashboard: [], base: [], obras: [], empleados: [], proveedores: [] };
+let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [] };
 let currentSection = 'resumen';
 
 // Lee el Base ID desde ?base=appXXXX en la URL, o usa el default (tu estudio)
@@ -618,21 +617,13 @@ function exportarCSV() {
 // --- SUELDOS ---
 function renderSueldos() {
   const meses = mesesAnteriores(3);
-  // BASE usa field IDs como claves
-  const mov = DATA.base.filter(r => r.fields.fldPS7Fnbp2tNPoRj?.name === 'Sueldos');
+  const mov = DATA.dashboard.filter(r => r.fields.origen === 'Sueldos');
   const empleados = DATA.empleados;
-
-  // Función para obtener mes-año de un registro de BASE (usa fecha, no mes_anio)
-  function getMesAnio(r) {
-    const fecha = r.fields.fldwSO8gk8qAMThDk || '';
-    if (!fecha) return '';
-    return fecha.substring(0, 7); // "2026-04"
-  }
 
   // Total por mes
   const totalPorMes = meses.map(m =>
-    mov.filter(r => getMesAnio(r) === m)
-       .reduce((s,r) => s + (r.fields.fldOhVkDYFabWxpci||0), 0)
+    mov.filter(r => r.fields.mes_anio === m)
+       .reduce((s,r) => s + (r.fields.monto||0), 0)
   );
 
   // Stats por mes
@@ -653,11 +644,10 @@ function renderSueldos() {
     const empleadoId = e.id;
     const pagosMes = meses.map(m => {
       const total = mov.filter(r => {
-        if (getMesAnio(r) !== m) return false;
-        // fldRX8WPSbpVE6v2v es el campo empleado en BASE
-        const linked = r.fields.fldRX8WPSbpVE6v2v || [];
+        if (r.fields.mes_anio !== m) return false;
+        const linked = r.fields.empleado_id || [];
         return linked.some(l => l.id === empleadoId);
-      }).reduce((s,r) => s + (r.fields.fldOhVkDYFabWxpci||0), 0);
+      }).reduce((s,r) => s + (r.fields.monto||0), 0);
       return total;
     });
     html += `<tr>
@@ -675,15 +665,14 @@ function renderSueldos() {
 // --- CARGA PRINCIPAL ---
 async function cargarTodo() {
   try {
-    const [dashboard, base, obras, empleados, proveedores] = await Promise.all([
+    const [dashboard, obras, empleados, proveedores] = await Promise.all([
       fetchTable(TABLES.dashboard),
-      fetchTable(TABLES.base),
       fetchTable(TABLES.obras),
       fetchTable(TABLES.empleados),
       fetchTable(TABLES.proveedores)
     ]);
 
-    DATA = { dashboard, base, obras, empleados, proveedores };
+    DATA = { dashboard, obras, empleados, proveedores };
 
     // Destruir charts anteriores
     Chart.helpers.each(Chart.instances, c => c.destroy());
