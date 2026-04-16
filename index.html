@@ -617,12 +617,23 @@ function exportarCSV() {
 
 // --- SUELDOS ---
 function renderSueldos() {
-  const meses = mesesAnteriores(3); // 4 meses: mes-3, mes-2, mes-1, mes actual
-  const mov = DATA.base.filter(r => (r.fields.fldPS7Fnbp2tNPoRj?.name || r.fields.origen) === 'Sueldos');
+  const meses = mesesAnteriores(3);
+  // BASE usa field IDs como claves
+  const mov = DATA.base.filter(r => r.fields.fldPS7Fnbp2tNPoRj?.name === 'Sueldos');
   const empleados = DATA.empleados;
 
+  // Función para obtener mes-año de un registro de BASE (usa fecha, no mes_anio)
+  function getMesAnio(r) {
+    const fecha = r.fields.fldwSO8gk8qAMThDk || '';
+    if (!fecha) return '';
+    return fecha.substring(0, 7); // "2026-04"
+  }
+
   // Total por mes
-  const totalPorMes = meses.map(m => mov.filter(r=>(r.fields.mes_anio||r.fields.fldJPVb2dqTNtNgQB)===m).reduce((s,r)=>s+(r.fields.monto||r.fields.fldOhVkDYFabWxpci||0),0));
+  const totalPorMes = meses.map(m =>
+    mov.filter(r => getMesAnio(r) === m)
+       .reduce((s,r) => s + (r.fields.fldOhVkDYFabWxpci||0), 0)
+  );
 
   // Stats por mes
   document.getElementById('sueldo-stats').innerHTML = meses.map((m,i) => `
@@ -631,34 +642,6 @@ function renderSueldos() {
       <div class="stat-value red">${fmt(totalPorMes[i])}</div>
     </div>`).join('');
 
-  // Tabla: una fila por empleado, columnas por mes
-  // Buscar pagos por nombre de empleado en comentario o en empleado_id
-  // Como los movimientos en DASHBOARD tienen empleado_id como link, buscamos por nombre
-  const rows = empleados.map(e => {
-    const nombre = e.fields.nombre_apellido || '—';
-    const rol = e.fields.Rol || '';
-    const pagos = meses.map(m => {
-      // Buscar en DATA.dashboard movimientos de sueldos de este mes
-      // que coincidan con el empleado — usamos el campo concepto o comparamos por nombre
-      const total = mov.filter(r => {
-        if (r.fields.mes_anio !== m) return false;
-        // intentamos matchear por concepto o comentario
-        const concepto = (r.fields.concepto || '').toLowerCase();
-        const comment = (r.fields.comentario || '').toLowerCase();
-        const nombreLower = nombre.toLowerCase();
-        return concepto.includes(nombreLower.split(' ')[0].toLowerCase()) || 
-               comment.includes(nombreLower.split(' ')[0].toLowerCase()) ||
-               r.fields.monto > 0; // fallback: suma todos si hay solo uno
-      });
-      // Si hay varios empleados, repartir equitativamente no funciona bien
-      // Mejor: sumar todo de sueldos del mes y dividir por empleados (approximación MVP)
-      return null; // se calcula diferente abajo
-    });
-    return { nombre, rol };
-  });
-
-  // Approach más simple para MVP: mostrar total de sueldos por mes en una fila,
-  // y si hay registros con concepto que incluya nombre del empleado, mostrarlo
   let html = `<div class="sueldo-table-wrap"><table><thead><tr>
     <th>Empleado</th><th>Rol</th>
     ${meses.map(m=>`<th class="num">${fmtMes(m)}</th>`).join('')}
@@ -667,15 +650,14 @@ function renderSueldos() {
   empleados.forEach(e => {
     const nombre = e.fields.nombre_apellido || '—';
     const rol = e.fields.Rol || '—';
-    const empleadoId = e.id; // ID del registro de empleado
+    const empleadoId = e.id;
     const pagosMes = meses.map(m => {
       const total = mov.filter(r => {
-        const mesAnio = r.fields.mes_anio || r.fields.fldJPVb2dqTNtNgQB || '';
-        if (mesAnio !== m) return false;
-        // Matchear por linked record usando field ID
-        const linked = r.fields.fldvhvu50xTAdbghX || r.fields.fldRX8WPSbpVE6v2v || r.fields.empleado_id || [];
+        if (getMesAnio(r) !== m) return false;
+        // fldRX8WPSbpVE6v2v es el campo empleado en BASE
+        const linked = r.fields.fldRX8WPSbpVE6v2v || [];
         return linked.some(l => l.id === empleadoId);
-      }).reduce((s,r)=>s+(r.fields.monto||0),0);
+      }).reduce((s,r) => s + (r.fields.fldOhVkDYFabWxpci||0), 0);
       return total;
     });
     html += `<tr>
