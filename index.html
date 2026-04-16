@@ -646,7 +646,7 @@ function renderSueldos() {
       const total = mov.filter(r => {
         if (r.fields.mes_anio !== m) return false;
         const linked = r.fields.empleado_id || [];
-        return linked.some(l => l.id === empleadoId);
+        return linked.some(l => (l.id || l) === empleadoId);
       }).reduce((s,r) => s + (r.fields.monto||0), 0);
       return total;
     });
