@@ -395,7 +395,7 @@ function renderResumen() {
       </div>
       <div class="chart-wrap">
         <div class="chart-title">Detalle de gastos</div>
-        <canvas id="chartBarras" height="120"></canvas>
+        <canvas id="chartBarras"></canvas>
       </div>
     </div>
     <div class="table-wrap">
@@ -452,9 +452,17 @@ function renderResumen() {
     options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } } }
   });
 
-  // Barras verticales - detalle montos por origen
+  // Barras verticales - detalle montos por origen (escala dinámica, altura completa)
   const origenesSort = Object.entries(egresosPorOrigen).sort((a,b)=>b[1]-a[1]);
-  new Chart(document.getElementById('chartBarras'), {
+  const maxVal = origenesSort.length ? origenesSort[0][1] : 0;
+  const tickCb = v => {
+    if (maxVal >= 1000000) return '$'+(v/1000000).toFixed(1)+'M';
+    if (maxVal >= 1000) return '$'+(v/1000).toFixed(0)+'k';
+    return '$'+v;
+  };
+  const chartBarrasEl = document.getElementById('chartBarras');
+  chartBarrasEl.style.height = '100%';
+  new Chart(chartBarrasEl, {
     type: 'bar',
     data: {
       labels: origenesSort.map(([k])=>k),
@@ -462,10 +470,11 @@ function renderResumen() {
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        y: { ticks: { callback: v => v >= 1000 ? '$'+(v/1000).toFixed(0)+'k' : '$'+v, font:{family:'DM Mono',size:10} }, grid:{color:'#E8E4DC'} },
-        x: { ticks: { font:{family:'DM Sans',size:11} }, grid:{display:false} }
+        y: { ticks: { callback: tickCb, font:{family:'DM Mono',size:10} }, grid:{color:'#E8E4DC'} },
+        x: { ticks: { font:{family:'DM Sans',size:11}, maxRotation: 30 }, grid:{display:false} }
       }
     }
   });
@@ -685,12 +694,13 @@ function renderSueldos() {
   empleados.forEach(e => {
     const nombre = e.fields.nombre_apellido || '—';
     const rol = e.fields.Rol || '—';
+    const empleadoId = e.id; // ID del registro de empleado
     const pagosMes = meses.map(m => {
       const total = mov.filter(r => {
         if (r.fields.mes_anio !== m) return false;
-        const concepto = (r.fields.concepto || r.fields.comentario || '').toLowerCase();
-        const palabras = nombre.toLowerCase().split(' ');
-        return palabras.some(p => p.length > 3 && concepto.includes(p));
+        // Matchear por linked record: el campo empleado_id es un array de {id, name}
+        const linked = r.fields.empleado_id || [];
+        return linked.some(l => l.id === empleadoId);
       }).reduce((s,r)=>s+(r.fields.monto||0),0);
       return total;
     });
