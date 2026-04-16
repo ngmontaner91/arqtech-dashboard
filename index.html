@@ -395,7 +395,7 @@ function renderResumen() {
       </div>
       <div class="chart-wrap">
         <div class="chart-title">Detalle de gastos</div>
-        <canvas id="chartBarras"></canvas>
+        <canvas id="chartBarras" height="55"></canvas>
       </div>
     </div>
     <div class="table-wrap">
@@ -452,7 +452,7 @@ function renderResumen() {
     options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } } }
   });
 
-  // Barras verticales - detalle montos por origen (escala dinámica, altura completa)
+  // Barras horizontales - detalle montos por origen
   const origenesSort = Object.entries(egresosPorOrigen).sort((a,b)=>b[1]-a[1]);
   const maxVal = origenesSort.length ? origenesSort[0][1] : 0;
   const tickCb = v => {
@@ -460,21 +460,19 @@ function renderResumen() {
     if (maxVal >= 1000) return '$'+(v/1000).toFixed(0)+'k';
     return '$'+v;
   };
-  const chartBarrasEl = document.getElementById('chartBarras');
-  chartBarrasEl.style.height = '100%';
-  new Chart(chartBarrasEl, {
+  new Chart(document.getElementById('chartBarras'), {
     type: 'bar',
     data: {
       labels: origenesSort.map(([k])=>k),
-      datasets: [{ data: origenesSort.map(([,v])=>v), backgroundColor: colores.slice(0,origenesSort.length), borderRadius: 4 }]
+      datasets: [{ data: origenesSort.map(([,v])=>v), backgroundColor: colores.slice(0,origenesSort.length), borderRadius: 4, borderSkipped: false }]
     },
     options: {
+      indexAxis: 'y',
       responsive: true,
-      maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        y: { ticks: { callback: tickCb, font:{family:'DM Mono',size:10} }, grid:{color:'#E8E4DC'} },
-        x: { ticks: { font:{family:'DM Sans',size:11}, maxRotation: 30 }, grid:{display:false} }
+        x: { ticks: { callback: tickCb, font:{family:'DM Mono',size:10} }, grid:{color:'#E8E4DC'} },
+        y: { ticks: { font:{family:'DM Sans',size:11} }, grid:{display:false} }
       }
     }
   });
@@ -698,8 +696,8 @@ function renderSueldos() {
     const pagosMes = meses.map(m => {
       const total = mov.filter(r => {
         if (r.fields.mes_anio !== m) return false;
-        // Matchear por linked record: el campo empleado_id es un array de {id, name}
-        const linked = r.fields.empleado_id || [];
+        // Matchear por linked record: field ID fldvhvu50xTAdbghX
+        const linked = r.fields.fldvhvu50xTAdbghX || r.fields.empleado_id || [];
         return linked.some(l => l.id === empleadoId);
       }).reduce((s,r)=>s+(r.fields.monto||0),0);
       return total;
