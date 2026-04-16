@@ -395,7 +395,7 @@ function renderResumen() {
       </div>
       <div class="chart-wrap">
         <div class="chart-title">Detalle de gastos</div>
-        <canvas id="chartBarras" height="55"></canvas>
+        <canvas id="chartBarras" height="120"></canvas>
       </div>
     </div>
     <div class="table-wrap">
@@ -452,21 +452,20 @@ function renderResumen() {
     options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } } }
   });
 
-  // Barras horizontales - detalle montos por origen
+  // Barras verticales - detalle montos por origen
   const origenesSort = Object.entries(egresosPorOrigen).sort((a,b)=>b[1]-a[1]);
   new Chart(document.getElementById('chartBarras'), {
     type: 'bar',
     data: {
       labels: origenesSort.map(([k])=>k),
-      datasets: [{ data: origenesSort.map(([,v])=>v), backgroundColor: colores.slice(0,origenesSort.length), borderRadius: 4, borderSkipped: false }]
+      datasets: [{ data: origenesSort.map(([,v])=>v), backgroundColor: colores.slice(0,origenesSort.length), borderRadius: 4 }]
     },
     options: {
-      indexAxis: 'y',
       responsive: true,
       plugins: { legend: { display: false } },
       scales: {
-        x: { ticks: { callback: v=>'$'+(v/1000000).toFixed(1)+'M', font:{family:'DM Mono',size:10} }, grid:{color:'#E8E4DC'} },
-        y: { ticks: { font:{family:'DM Sans',size:11} }, grid:{display:false} }
+        y: { ticks: { callback: v => v >= 1000 ? '$'+(v/1000).toFixed(0)+'k' : '$'+v, font:{family:'DM Mono',size:10} }, grid:{color:'#E8E4DC'} },
+        x: { ticks: { font:{family:'DM Sans',size:11} }, grid:{display:false} }
       }
     }
   });
