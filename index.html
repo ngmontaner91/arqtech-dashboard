@@ -267,12 +267,13 @@ const PROXY = 'https://wandering-sound-8f28.nicolasgmontaner.workers.dev';
 const BASE_ID_DEFAULT = 'appYefsAUNtFp4pfY';
 const TABLES = {
   dashboard: 'tbl6rCGU4vPkkFaVs',
+  base: 'tblVmAfvaqTw6aJaj',
   obras: 'tblkUEc7cYCBLMULL',
   empleados: 'tblLgTz0esYXhd8aO',
   proveedores: 'tblkxAIwpWMP30gT2'
 };
 
-let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [] };
+let DATA = { dashboard: [], base: [], obras: [], empleados: [], proveedores: [] };
 let currentSection = 'resumen';
 
 // Lee el Base ID desde ?base=appXXXX en la URL, o usa el default (tu estudio)
@@ -384,7 +385,7 @@ function renderResumen() {
       <div class="chart-title">Evolutivo mensual — últimos 6 meses</div>
       <canvas id="chartEvol" height="80"></canvas>
     </div>
-    <div class="chart-grid" style="grid-template-columns:1fr 1fr 1fr;max-width:none">
+    <div class="chart-grid" style="grid-template-columns:1fr 1fr;max-width:none">
       <div class="chart-wrap">
         <div class="chart-title">Movimientos del mes</div>
         <canvas id="chartTorta1" height="55"></canvas>
@@ -393,10 +394,7 @@ function renderResumen() {
         <div class="chart-title">Gastos por origen</div>
         <canvas id="chartTorta2" height="55"></canvas>
       </div>
-      <div class="chart-wrap">
-        <div class="chart-title">Detalle de gastos</div>
-        <canvas id="chartBarras" height="55"></canvas>
-      </div>
+
     </div>
     <div class="table-wrap">
       <div class="table-header"><span class="table-title-sm">Últimos movimientos</span></div>
@@ -452,30 +450,7 @@ function renderResumen() {
     options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } } }
   });
 
-  // Barras horizontales - detalle montos por origen
-  const origenesSort = Object.entries(egresosPorOrigen).sort((a,b)=>b[1]-a[1]);
-  const maxVal = origenesSort.length ? origenesSort[0][1] : 0;
-  const tickCb = v => {
-    if (maxVal >= 1000000) return '$'+(v/1000000).toFixed(1)+'M';
-    if (maxVal >= 1000) return '$'+(v/1000).toFixed(0)+'k';
-    return '$'+v;
-  };
-  new Chart(document.getElementById('chartBarras'), {
-    type: 'bar',
-    data: {
-      labels: origenesSort.map(([k])=>k),
-      datasets: [{ data: origenesSort.map(([,v])=>v), backgroundColor: colores.slice(0,origenesSort.length), borderRadius: 4, borderSkipped: false }]
-    },
-    options: {
-      indexAxis: 'y',
-      responsive: true,
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { callback: tickCb, font:{family:'DM Mono',size:10} }, grid:{color:'#E8E4DC'} },
-        y: { ticks: { font:{family:'DM Sans',size:11} }, grid:{display:false} }
-      }
-    }
-  });
+
 }
 
 // --- OBRAS ---
@@ -643,11 +618,11 @@ function exportarCSV() {
 // --- SUELDOS ---
 function renderSueldos() {
   const meses = mesesAnteriores(3); // 4 meses: mes-3, mes-2, mes-1, mes actual
-  const mov = DATA.dashboard.filter(r => r.fields.origen === 'Sueldos');
+  const mov = DATA.base.filter(r => (r.fields.fldPS7Fnbp2tNPoRj?.name || r.fields.origen) === 'Sueldos');
   const empleados = DATA.empleados;
 
   // Total por mes
-  const totalPorMes = meses.map(m => mov.filter(r=>r.fields.mes_anio===m).reduce((s,r)=>s+(r.fields.monto||0),0));
+  const totalPorMes = meses.map(m => mov.filter(r=>(r.fields.mes_anio||r.fields.fldJPVb2dqTNtNgQB)===m).reduce((s,r)=>s+(r.fields.monto||r.fields.fldOhVkDYFabWxpci||0),0));
 
   // Stats por mes
   document.getElementById('sueldo-stats').innerHTML = meses.map((m,i) => `
@@ -695,9 +670,10 @@ function renderSueldos() {
     const empleadoId = e.id; // ID del registro de empleado
     const pagosMes = meses.map(m => {
       const total = mov.filter(r => {
-        if (r.fields.mes_anio !== m) return false;
-        // Matchear por linked record: field ID fldvhvu50xTAdbghX
-        const linked = r.fields.fldvhvu50xTAdbghX || r.fields.empleado_id || [];
+        const mesAnio = r.fields.mes_anio || r.fields.fldJPVb2dqTNtNgQB || '';
+        if (mesAnio !== m) return false;
+        // Matchear por linked record usando field ID
+        const linked = r.fields.fldvhvu50xTAdbghX || r.fields.fldRX8WPSbpVE6v2v || r.fields.empleado_id || [];
         return linked.some(l => l.id === empleadoId);
       }).reduce((s,r)=>s+(r.fields.monto||0),0);
       return total;
@@ -717,14 +693,15 @@ function renderSueldos() {
 // --- CARGA PRINCIPAL ---
 async function cargarTodo() {
   try {
-    const [dashboard, obras, empleados, proveedores] = await Promise.all([
+    const [dashboard, base, obras, empleados, proveedores] = await Promise.all([
       fetchTable(TABLES.dashboard),
+      fetchTable(TABLES.base),
       fetchTable(TABLES.obras),
       fetchTable(TABLES.empleados),
       fetchTable(TABLES.proveedores)
     ]);
 
-    DATA = { dashboard, obras, empleados, proveedores };
+    DATA = { dashboard, base, obras, empleados, proveedores };
 
     // Destruir charts anteriores
     Chart.helpers.each(Chart.instances, c => c.destroy());
