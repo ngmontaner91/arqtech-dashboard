@@ -635,7 +635,11 @@ function renderCargar() {
   };
   const orden = ['form_movimiento','form_obra','form_proveedor','form_adicional','form_empleado'];
   const map = {};
-  DATA.config.forEach(r => { map[r.fields.clave] = r.fields.url; });
+  // url contiene solo el pageId — armamos la URL completa con el baseId actual
+  DATA.config.forEach(r => {
+    const pageId = r.fields.url;
+    map[r.fields.clave] = `https://airtable.com/${getBaseId()}/${pageId}/form`;
+  });
   const html = orden.map(clave => {
     const url = map[clave] || '#';
     const { icon, bg, color, title, sub } = iconos[clave] || {};
