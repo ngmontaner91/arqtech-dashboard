@@ -195,47 +195,8 @@ input:focus{outline:none;border-color:var(--border-strong)}
 <div id="s-cargar" class="section">
   <p class="section-title">Cargar datos</p>
   <p class="section-sub">Accesos rápidos a los formularios de carga — se abre en una nueva pestaña</p>
-  <div style="display:flex;flex-direction:column;gap:12px;max-width:560px;margin-bottom:32px">
-    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagBakEKQtzM4guSn/form" target="_blank">
-      <div class="form-card-icon" style="background:#EEF4FB;color:#1B4F8A">$</div>
-      <div>
-        <div class="form-card-title">Nuevo movimiento</div>
-        <div class="form-card-sub">Registrar ingreso o egreso del estudio</div>
-      </div>
-      <div class="form-card-arrow">↗</div>
-    </a>
-    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagpjnM7H7dW7kEaF/form" target="_blank">
-      <div class="form-card-icon" style="background:#EEF8F2;color:#1B6B3A">⌂</div>
-      <div>
-        <div class="form-card-title">Nueva obra</div>
-        <div class="form-card-sub">Dar de alta un nuevo proyecto</div>
-      </div>
-      <div class="form-card-arrow">↗</div>
-    </a>
-    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagYfjbps8AaSCdFg/form" target="_blank">
-      <div class="form-card-icon" style="background:#FBF4EE;color:#8A5A1B">⚒</div>
-      <div>
-        <div class="form-card-title">Nuevo proveedor</div>
-        <div class="form-card-sub">Cargar proveedor y presupuesto de obra</div>
-      </div>
-      <div class="form-card-arrow">↗</div>
-    </a>
-    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pagxdvo8HqSnRVxDe/form" target="_blank">
-      <div class="form-card-icon" style="background:#FBEEEE;color:#8A1B1B">+</div>
-      <div>
-        <div class="form-card-title">Nuevo adicional</div>
-        <div class="form-card-sub">Registrar imprevisto o adicional de obra</div>
-      </div>
-      <div class="form-card-arrow">↗</div>
-    </a>
-    <a class="form-card" href="https://airtable.com/appYefsAUNtFp4pfY/pageYr0i6BYMmD8Dw/form" target="_blank">
-      <div class="form-card-icon" style="background:#F1EFE8;color:#5F5E5A">👤</div>
-      <div>
-        <div class="form-card-title">Nuevo empleado</div>
-        <div class="form-card-sub">Agregar integrante al estudio</div>
-      </div>
-      <div class="form-card-arrow">↗</div>
-    </a>
+  <div id="cargar-content" style="display:flex;flex-direction:column;gap:12px;max-width:560px;margin-bottom:32px">
+    <div class="loading-state"><div class="spinner"></div>Cargando formularios...</div>
   </div>
 </div>
 
@@ -269,10 +230,11 @@ const TABLES = {
   dashboard: 'tbl6rCGU4vPkkFaVs',
   obras: 'tblkUEc7cYCBLMULL',
   empleados: 'tblLgTz0esYXhd8aO',
-  proveedores: 'tblkxAIwpWMP30gT2'
+  proveedores: 'tblkxAIwpWMP30gT2',
+  config: 'tbl3tBdvWHyTvfLDm'
 };
 
-let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [] };
+let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [], config: [] };
 let currentSection = 'resumen';
 
 // Lee el Base ID desde ?base=appXXXX en la URL, o usa el default (tu estudio)
@@ -662,17 +624,50 @@ function renderSueldos() {
   document.getElementById('sueldo-table').innerHTML = html;
 }
 
+// --- CARGAR ---
+function renderCargar() {
+  const iconos = {
+    form_movimiento: { icon: '$', bg: '#EEF4FB', color: '#1B4F8A', title: 'Nuevo movimiento', sub: 'Registrar ingreso o egreso del estudio' },
+    form_obra:       { icon: '⌂', bg: '#EEF8F2', color: '#1B6B3A', title: 'Nueva obra', sub: 'Dar de alta un nuevo proyecto' },
+    form_proveedor:  { icon: '⚒', bg: '#FBF4EE', color: '#8A5A1B', title: 'Nuevo proveedor', sub: 'Cargar proveedor y presupuesto de obra' },
+    form_adicional:  { icon: '+', bg: '#FBEEEE', color: '#8A1B1B', title: 'Nuevo adicional', sub: 'Registrar imprevisto o adicional de obra' },
+    form_empleado:   { icon: '👤', bg: '#F1EFE8', color: '#5F5E5A', title: 'Nuevo empleado', sub: 'Agregar integrante al estudio' },
+  };
+  const orden = ['form_movimiento','form_obra','form_proveedor','form_adicional','form_empleado'];
+  const map = {};
+  // url contiene solo el pageId — armamos la URL completa con el baseId actual
+  DATA.config.forEach(r => {
+    const pageId = r.fields.url;
+    map[r.fields.clave] = `https://airtable.com/${getBaseId()}/${pageId}/form`;
+  });
+  const html = orden.map(clave => {
+    const url = map[clave] || '#';
+    const { icon, bg, color, title, sub } = iconos[clave] || {};
+    return `<a class="form-card" href="${url}" target="_blank">
+      <div class="form-card-icon" style="background:${bg};color:${color}">${icon}</div>
+      <div>
+        <div class="form-card-title">${title}</div>
+        <div class="form-card-sub">${sub}</div>
+      </div>
+      <div class="form-card-arrow">↗</div>
+    </a>`;
+  }).join('');
+  document.getElementById('cargar-content').innerHTML = html;
+}
+
 // --- CARGA PRINCIPAL ---
 async function cargarTodo() {
   try {
-    const [dashboard, obras, empleados, proveedores] = await Promise.all([
+    const [dashboard, obras, empleados, proveedores, config] = await Promise.all([
       fetchTable(TABLES.dashboard),
       fetchTable(TABLES.obras),
       fetchTable(TABLES.empleados),
-      fetchTable(TABLES.proveedores)
+      fetchTable(TABLES.proveedores),
+      fetchTable(TABLES.config)
     ]);
 
-    DATA = { dashboard, obras, empleados, proveedores };
+    DATA = { dashboard, obras, empleados, proveedores, config };
+    renderCargar();
 
     // Destruir charts anteriores
     Chart.helpers.each(Chart.instances, c => c.destroy());
