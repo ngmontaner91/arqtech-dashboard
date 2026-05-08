@@ -941,8 +941,10 @@ async function submitForm(overlayId, tableId, fields, msg) {
     await postRecord(tableId, fields);
     showToast(msg);
     closeForm(overlayId);
+    return true;
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
+    return false;
   } finally {
     btn.disabled = false; btn.textContent = 'Guardar';
   }
@@ -988,9 +990,8 @@ async function guardarMovimiento() {
   if (obraId && origen === 'Obras')   fields.obra_id     = [obraId];
   if (empId  && origen === 'Sueldos') fields.empleado_id = [empId];
   if (tc && moneda === 'USD') fields.tc = tc;
-  await submitForm('overlay-movimiento', TABLES.base, fields, 'Movimiento guardado');
-  document.getElementById('form-movimiento').reset();
-  movOrigenChange(); movMonedaChange();
+  const ok = await submitForm('overlay-movimiento', TABLES.base, fields, 'Movimiento guardado');
+  if (ok) { document.getElementById('form-movimiento').reset(); movOrigenChange(); movMonedaChange(); }
 }
 
 // Obra
@@ -1165,6 +1166,8 @@ function cerrarSesion() {
   location.reload();
 }
 
+function cerrarConfig() { document.getElementById('modalOverlay').classList.remove('open'); }
+function guardarConfig() { cerrarConfig(); }
 window.addEventListener('keydown', e => { if(e.key==='Escape') cerrarConfig(); });
 document.getElementById('modalOverlay').addEventListener('click', e => { if(e.target===e.currentTarget) cerrarConfig(); });
 
