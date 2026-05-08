@@ -134,6 +134,28 @@ input:focus{outline:none;border-color:var(--border-strong)}
 .pin-btn:hover{opacity:.8}
 .logout-btn{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--text-faint);background:none;border:none;cursor:pointer;padding:4px 8px}
 .logout-btn:hover{color:var(--text-muted)}
+/* Form overlays */
+.form-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:32px 20px;overflow-y:auto}
+.form-overlay.open{display:flex}
+.form-panel{background:var(--surface);border-radius:16px;width:100%;max-width:540px;margin:auto 0;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+.form-panel-header{padding:22px 28px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.form-panel-title{font-size:17px;font-weight:400;letter-spacing:-.01em}
+.form-close{background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-muted);padding:2px 8px;border-radius:4px;line-height:1}
+.form-close:hover{background:var(--bg);color:var(--text)}
+.form-panel-body{padding:22px 28px}
+.form-panel-footer{padding:14px 28px 22px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border)}
+.fg{margin-bottom:14px}
+.fl{font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);margin-bottom:5px;display:block}
+.fi,.fs,.ft{font-family:'DM Sans',sans-serif;font-size:13px;width:100%;padding:8px 11px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);transition:border-color .15s;box-sizing:border-box}
+.fi:focus,.fs:focus,.ft:focus{outline:none;border-color:var(--border-strong)}
+.ft{resize:vertical;min-height:72px}
+.fi.mono{font-family:'DM Mono',monospace;font-size:12px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-sep{height:1px;background:var(--border);margin:18px 0}
+/* Toast */
+.toast{position:fixed;bottom:28px;right:28px;background:var(--text);color:#fff;font-size:13px;padding:11px 18px;border-radius:10px;z-index:600;opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.visible{opacity:1;transform:translateY(0)}
+.toast.terror{background:var(--red)}
 </style>
 </head>
 <body>
@@ -228,6 +250,179 @@ input:focus{outline:none;border-color:var(--border-strong)}
 
 </main>
 
+<div id="toast" class="toast"></div>
+
+<!-- Nuevo movimiento -->
+<div id="overlay-movimiento" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-movimiento')">
+  <div class="form-panel">
+    <div class="form-panel-header">
+      <span class="form-panel-title">Nuevo movimiento</span>
+      <button class="form-close" onclick="closeForm('overlay-movimiento')">✕</button>
+    </div>
+    <form id="form-movimiento" class="form-panel-body" onsubmit="return false">
+      <div class="fg"><label class="fl">Concepto *</label><input id="mov-concepto" class="fi" type="text" placeholder="Ej: Anticipo cliente Rodríguez"></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Fecha *</label><input id="mov-fecha" class="fi" type="date"></div>
+        <div class="fg"><label class="fl">Tipo *</label>
+          <select id="mov-tipo" class="fs"><option value="">— Seleccionar —</option><option>Ingreso</option><option>Egreso</option></select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Origen *</label>
+        <select id="mov-origen" class="fs" onchange="movOrigenChange()">
+          <option value="">— Seleccionar —</option>
+          <option>Sueldos</option><option>Obras</option><option>Marketing</option>
+          <option>Inversion</option><option>Gastos administrativos</option><option>Otros</option>
+        </select>
+      </div>
+      <div id="mov-obra-group" class="fg" style="display:none">
+        <label class="fl">Obra</label>
+        <select id="mov-obra" class="fs"><option value="">— Seleccionar obra —</option></select>
+      </div>
+      <div id="mov-empleado-group" class="fg" style="display:none">
+        <label class="fl">Empleado</label>
+        <select id="mov-empleado" class="fs"><option value="">— Seleccionar empleado —</option></select>
+      </div>
+      <div class="form-sep"></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Monto *</label><input id="mov-monto" class="fi mono" type="number" min="0" step="0.01" placeholder="0"></div>
+        <div class="fg"><label class="fl">Moneda</label>
+          <select id="mov-moneda" class="fs" onchange="movMonedaChange()"><option>ARS</option><option>USD</option></select>
+        </div>
+      </div>
+      <div id="mov-tc-group" class="fg" style="display:none">
+        <label class="fl">Tipo de cambio</label><input id="mov-tc" class="fi mono" type="number" step="0.01" placeholder="0.00">
+      </div>
+      <div class="fg"><label class="fl">Medio de pago</label>
+        <select id="mov-medio" class="fs">
+          <option value="">— Seleccionar —</option>
+          <option>Efectivo</option><option>Transferencia</option><option>Cheque</option><option>Tarjeta</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Comentario</label><textarea id="mov-comentario" class="ft" placeholder="Notas adicionales..."></textarea></div>
+    </form>
+    <div class="form-panel-footer">
+      <button class="btn btn-outline" onclick="closeForm('overlay-movimiento')">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarMovimiento()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nueva obra -->
+<div id="overlay-obra" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-obra')">
+  <div class="form-panel">
+    <div class="form-panel-header">
+      <span class="form-panel-title">Nueva obra</span>
+      <button class="form-close" onclick="closeForm('overlay-obra')">✕</button>
+    </div>
+    <form id="form-obra" class="form-panel-body" onsubmit="return false">
+      <div class="fg"><label class="fl">Nombre *</label><input id="obra-nombre" class="fi" type="text" placeholder="Ej: Casa Rodríguez — Palermo"></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Categoría</label>
+          <select id="obra-categoria" class="fs">
+            <option value="">— Seleccionar —</option>
+            <option>Vivienda unifamiliar</option><option>Departamento</option><option>Local comercial</option>
+            <option>Oficina</option><option>Reforma</option><option>Refacción</option><option>Otros</option>
+          </select>
+        </div>
+        <div class="fg"><label class="fl">Estado</label>
+          <select id="obra-estado" class="fs">
+            <option value="">— Seleccionar —</option>
+            <option>En curso</option><option>En presupuesto</option><option>Pausada</option><option>Finalizada</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Fecha inicio</label><input id="obra-fecha-inicio" class="fi" type="date"></div>
+        <div class="fg"><label class="fl">Fecha fin estimada</label><input id="obra-fecha-fin" class="fi" type="date"></div>
+      </div>
+      <div class="fg"><label class="fl">Descripción</label><textarea id="obra-descripcion" class="ft" placeholder="Descripción de la obra..."></textarea></div>
+    </form>
+    <div class="form-panel-footer">
+      <button class="btn btn-outline" onclick="closeForm('overlay-obra')">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarObra()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nuevo proveedor -->
+<div id="overlay-proveedor" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-proveedor')">
+  <div class="form-panel">
+    <div class="form-panel-header">
+      <span class="form-panel-title">Nuevo proveedor</span>
+      <button class="form-close" onclick="closeForm('overlay-proveedor')">✕</button>
+    </div>
+    <form id="form-proveedor" class="form-panel-body" onsubmit="return false">
+      <div class="fg"><label class="fl">Obra *</label><select id="prov-obra" class="fs"><option value="">— Seleccionar obra —</option></select></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Proveedor *</label><input id="prov-nombre" class="fi" type="text" placeholder="Nombre del proveedor"></div>
+        <div class="fg"><label class="fl">Rubro</label><input id="prov-rubro" class="fi" type="text" placeholder="Ej: Pintura, Electricidad"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Presupuesto proveedor</label><input id="prov-presupuesto" class="fi mono" type="number" min="0" step="0.01" placeholder="0"></div>
+        <div class="fg"><label class="fl">Monto cliente</label><input id="prov-cliente" class="fi mono" type="number" min="0" step="0.01" placeholder="0"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Fecha entrega</label><input id="prov-fecha-entrega" class="fi" type="date"></div>
+        <div class="fg"><label class="fl">Fecha pago</label><input id="prov-fecha-pago" class="fi" type="date"></div>
+      </div>
+      <div class="fg"><label class="fl">Comentario</label><textarea id="prov-comentario" class="ft" placeholder="Notas adicionales..."></textarea></div>
+    </form>
+    <div class="form-panel-footer">
+      <button class="btn btn-outline" onclick="closeForm('overlay-proveedor')">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarProveedor()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nuevo adicional -->
+<div id="overlay-adicional" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-adicional')">
+  <div class="form-panel">
+    <div class="form-panel-header">
+      <span class="form-panel-title">Nuevo adicional</span>
+      <button class="form-close" onclick="closeForm('overlay-adicional')">✕</button>
+    </div>
+    <form id="form-adicional" class="form-panel-body" onsubmit="return false">
+      <div class="fg"><label class="fl">Obra *</label><select id="adic-obra" class="fs" onchange="adicObraChange()"><option value="">— Seleccionar obra —</option></select></div>
+      <div class="fg"><label class="fl">Proveedor *</label><select id="adic-proveedor" class="fs"><option value="">— Primero seleccioná una obra —</option></select></div>
+      <div class="fg"><label class="fl">Descripción *</label><input id="adic-descripcion" class="fi" type="text" placeholder="Ej: Adicional sanitarios — ampliación"></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Monto proveedor</label><input id="adic-monto-prov" class="fi mono" type="number" step="0.01" placeholder="0"></div>
+        <div class="fg"><label class="fl">Monto cliente</label><input id="adic-monto-cli" class="fi mono" type="number" step="0.01" placeholder="0"></div>
+      </div>
+      <div class="fg"><label class="fl">Fecha</label><input id="adic-fecha" class="fi" type="date"></div>
+    </form>
+    <div class="form-panel-footer">
+      <button class="btn btn-outline" onclick="closeForm('overlay-adicional')">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarAdicional()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Nuevo empleado -->
+<div id="overlay-empleado" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-empleado')">
+  <div class="form-panel">
+    <div class="form-panel-header">
+      <span class="form-panel-title">Nuevo empleado</span>
+      <button class="form-close" onclick="closeForm('overlay-empleado')">✕</button>
+    </div>
+    <form id="form-empleado" class="form-panel-body" onsubmit="return false">
+      <div class="fg"><label class="fl">Nombre y apellido *</label><input id="emp-nombre" class="fi" type="text" placeholder="Ej: Juan García"></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Rol</label><input id="emp-rol" class="fi" type="text" placeholder="Ej: Arquitecto, Administrativo"></div>
+        <div class="fg"><label class="fl">DNI</label><input id="emp-dni" class="fi mono" type="text" placeholder="12345678"></div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Celular</label><input id="emp-celular" class="fi" type="tel" placeholder="+54 11 1234-5678"></div>
+        <div class="fg"><label class="fl">Mail</label><input id="emp-mail" class="fi" type="email" placeholder="juan@ejemplo.com"></div>
+      </div>
+    </form>
+    <div class="form-panel-footer">
+      <button class="btn btn-outline" onclick="closeForm('overlay-empleado')">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarEmpleado()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal config -->
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal">
@@ -253,11 +448,14 @@ input:focus{outline:none;border-color:var(--border-strong)}
 const PROXY = 'https://wandering-sound-8f28.nicolasgmontaner.workers.dev';
 const BASE_ID_DEFAULT = 'appYefsAUNtFp4pfY';
 const TABLES = {
-  dashboard: 'tbl6rCGU4vPkkFaVs',
-  obras: 'tblkUEc7cYCBLMULL',
-  empleados: 'tblLgTz0esYXhd8aO',
-  proveedores: 'tblkxAIwpWMP30gT2',
-  config: 'tbl3tBdvWHyTvfLDm'
+  dashboard:       'tbl6rCGU4vPkkFaVs',
+  obras:           'tblkUEc7cYCBLMULL',
+  empleados:       'tblLgTz0esYXhd8aO',
+  proveedores:     'tblkxAIwpWMP30gT2',
+  config:          'tbl3tBdvWHyTvfLDm',
+  base:            'tblVmAfvaqTw6aJaj',
+  proveedores_obra:'tbltXSN6zZ6HZwsFI',
+  adicionales:     'tblLYF7XeNZCyMiam'
 };
 
 let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [], config: [] };
@@ -652,29 +850,23 @@ function renderSueldos() {
 
 // --- CARGAR ---
 function renderCargar() {
-  const iconos = {
-    form_movimiento: { icon: '$', bg: '#EEF4FB', color: '#1B4F8A', title: 'Nuevo movimiento', sub: 'Registrar ingreso o egreso del estudio' },
-    form_obra:       { icon: '⌂', bg: '#EEF8F2', color: '#1B6B3A', title: 'Nueva obra', sub: 'Dar de alta un nuevo proyecto' },
-    form_proveedor:  { icon: '⚒', bg: '#FBF4EE', color: '#8A5A1B', title: 'Nuevo proveedor', sub: 'Cargar proveedor y presupuesto de obra' },
-    form_adicional:  { icon: '+', bg: '#FBEEEE', color: '#8A1B1B', title: 'Nuevo adicional', sub: 'Registrar imprevisto o adicional de obra' },
-    form_empleado:   { icon: '👤', bg: '#F1EFE8', color: '#5F5E5A', title: 'Nuevo empleado', sub: 'Agregar integrante al estudio' },
-  };
-  const orden = ['form_movimiento','form_obra','form_proveedor','form_adicional','form_empleado'];
-  const map = {};
-  DATA.config.forEach(r => { map[r.fields.clave] = r.fields.url; });
-  const html = orden.map(clave => {
-    const url = map[clave] || '#';
-    const { icon, bg, color, title, sub } = iconos[clave] || {};
-    return `<a class="form-card" href="${url}" target="_blank">
-      <div class="form-card-icon" style="background:${bg};color:${color}">${icon}</div>
+  const forms = [
+    { icon: '$',  bg: '#EEF4FB', color: '#1B4F8A', title: 'Nuevo movimiento', sub: 'Registrar ingreso o egreso del estudio', fn: 'openFormMovimiento()' },
+    { icon: '⌂',  bg: '#EEF8F2', color: '#1B6B3A', title: 'Nueva obra',       sub: 'Dar de alta un nuevo proyecto',          fn: 'openFormObra()' },
+    { icon: '⚒',  bg: '#FBF4EE', color: '#8A5A1B', title: 'Nuevo proveedor', sub: 'Cargar proveedor y presupuesto de obra',  fn: 'openFormProveedor()' },
+    { icon: '+',  bg: '#FBEEEE', color: '#8A1B1B', title: 'Nuevo adicional',  sub: 'Registrar imprevisto o adicional de obra',fn: 'openFormAdicional()' },
+    { icon: '👤', bg: '#F1EFE8', color: '#5F5E5A', title: 'Nuevo empleado',   sub: 'Agregar integrante al estudio',          fn: 'openFormEmpleado()' },
+  ];
+  document.getElementById('cargar-content').innerHTML = forms.map(f =>
+    `<div class="form-card" onclick="${f.fn}" role="button">
+      <div class="form-card-icon" style="background:${f.bg};color:${f.color}">${f.icon}</div>
       <div>
-        <div class="form-card-title">${title}</div>
-        <div class="form-card-sub">${sub}</div>
+        <div class="form-card-title">${f.title}</div>
+        <div class="form-card-sub">${f.sub}</div>
       </div>
-      <div class="form-card-arrow">↗</div>
-    </a>`;
-  }).join('');
-  document.getElementById('cargar-content').innerHTML = html;
+      <div class="form-card-arrow">→</div>
+    </div>`
+  ).join('');
 }
 
 // --- CARGA PRINCIPAL ---
@@ -707,6 +899,200 @@ async function cargarTodo() {
 }
 
 function recargar() { cargarTodo(); }
+
+// --- FORM HELPERS ---
+async function postRecord(tableId, fields) {
+  const url = `${PROXY}/v0/${getBaseId()}/${tableId}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields, typecast: true })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `Error ${res.status}`);
+  }
+  return res.json();
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type === 'error' ? ' terror' : '');
+  void t.offsetWidth;
+  t.classList.add('visible');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('visible'), 3000);
+}
+
+function openForm(id)  { document.getElementById(id).classList.add('open'); }
+function closeForm(id) { document.getElementById(id).classList.remove('open'); }
+
+function poblarObras(selId) {
+  document.getElementById(selId).innerHTML =
+    '<option value="">— Seleccionar obra —</option>' +
+    DATA.obras.map(o => `<option value="${o.id}">${o.fields.nombre}</option>`).join('');
+}
+
+async function submitForm(overlayId, tableId, fields, msg) {
+  const btn = document.querySelector(`#${overlayId} .btn-solid`);
+  btn.disabled = true; btn.textContent = 'Guardando...';
+  try {
+    await postRecord(tableId, fields);
+    showToast(msg);
+    closeForm(overlayId);
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+  }
+}
+
+// Movimiento
+function openFormMovimiento() {
+  openForm('overlay-movimiento');
+  document.getElementById('mov-fecha').value = new Date().toISOString().split('T')[0];
+  poblarObras('mov-obra');
+  document.getElementById('mov-empleado').innerHTML =
+    '<option value="">— Seleccionar empleado —</option>' +
+    DATA.empleados.map(e => `<option value="${e.id}">${e.fields.nombre_apellido}</option>`).join('');
+  movOrigenChange(); movMonedaChange();
+}
+function movOrigenChange() {
+  const v = document.getElementById('mov-origen').value;
+  document.getElementById('mov-obra-group').style.display     = v === 'Obras'   ? 'block' : 'none';
+  document.getElementById('mov-empleado-group').style.display = v === 'Sueldos' ? 'block' : 'none';
+}
+function movMonedaChange() {
+  document.getElementById('mov-tc-group').style.display =
+    document.getElementById('mov-moneda').value === 'USD' ? 'block' : 'none';
+}
+async function guardarMovimiento() {
+  const concepto = document.getElementById('mov-concepto').value.trim();
+  const fecha    = document.getElementById('mov-fecha').value;
+  const tipo     = document.getElementById('mov-tipo').value;
+  const origen   = document.getElementById('mov-origen').value;
+  const monto    = parseFloat(document.getElementById('mov-monto').value);
+  if (!concepto || !fecha || !tipo || !origen || !monto) {
+    showToast('Completá los campos obligatorios (*)', 'error'); return;
+  }
+  const moneda = document.getElementById('mov-moneda').value;
+  const medio  = document.getElementById('mov-medio').value;
+  const coment = document.getElementById('mov-comentario').value.trim();
+  const obraId = document.getElementById('mov-obra').value;
+  const empId  = document.getElementById('mov-empleado').value;
+  const tc     = parseFloat(document.getElementById('mov-tc').value) || null;
+  const fields = { concepto, fecha, tipo_de_movimiento: tipo, origen, monto, moneda };
+  if (medio)  fields.medio_de_pago = medio;
+  if (coment) fields.comentario    = coment;
+  if (obraId && origen === 'Obras')   fields.obra_id     = [obraId];
+  if (empId  && origen === 'Sueldos') fields.empleado_id = [empId];
+  if (tc && moneda === 'USD') fields.tc = tc;
+  await submitForm('overlay-movimiento', TABLES.base, fields, 'Movimiento guardado');
+  document.getElementById('form-movimiento').reset();
+  movOrigenChange(); movMonedaChange();
+}
+
+// Obra
+function openFormObra() {
+  document.getElementById('form-obra').reset();
+  openForm('overlay-obra');
+}
+async function guardarObra() {
+  const nombre = document.getElementById('obra-nombre').value.trim();
+  if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+  const fields = { nombre };
+  const cat  = document.getElementById('obra-categoria').value;
+  const est  = document.getElementById('obra-estado').value;
+  const fi   = document.getElementById('obra-fecha-inicio').value;
+  const ff   = document.getElementById('obra-fecha-fin').value;
+  const desc = document.getElementById('obra-descripcion').value.trim();
+  if (cat)  fields['Categoría']      = cat;
+  if (est)  fields.estado            = est;
+  if (fi)   fields.fecha_inicio      = fi;
+  if (ff)   fields.fecha_fin_estimada = ff;
+  if (desc) fields.descripcion       = desc;
+  await submitForm('overlay-obra', TABLES.obras, fields, 'Obra guardada');
+}
+
+// Proveedor
+function openFormProveedor() {
+  document.getElementById('form-proveedor').reset();
+  poblarObras('prov-obra');
+  openForm('overlay-proveedor');
+}
+async function guardarProveedor() {
+  const obraId    = document.getElementById('prov-obra').value;
+  const proveedor = document.getElementById('prov-nombre').value.trim();
+  if (!obraId || !proveedor) { showToast('Obra y proveedor son obligatorios', 'error'); return; }
+  const fields = { proveedor, obra_id: [obraId] };
+  const rubro = document.getElementById('prov-rubro').value.trim();
+  const pres  = parseFloat(document.getElementById('prov-presupuesto').value) || null;
+  const cli   = parseFloat(document.getElementById('prov-cliente').value)     || null;
+  const fe    = document.getElementById('prov-fecha-entrega').value;
+  const fp    = document.getElementById('prov-fecha-pago').value;
+  const comt  = document.getElementById('prov-comentario').value.trim();
+  if (rubro) fields.rubro          = rubro;
+  if (pres)  fields.presupuesto    = pres;
+  if (cli)   fields.monto_cliente  = cli;
+  if (fe)    fields.fecha_entrega  = fe;
+  if (fp)    fields.fecha_pago     = fp;
+  if (comt)  fields.comentario     = comt;
+  await submitForm('overlay-proveedor', TABLES.proveedores_obra, fields, 'Proveedor guardado');
+}
+
+// Adicional
+let _provObra = [];
+async function openFormAdicional() {
+  document.getElementById('form-adicional').reset();
+  document.getElementById('adic-fecha').value = new Date().toISOString().split('T')[0];
+  poblarObras('adic-obra');
+  document.getElementById('adic-proveedor').innerHTML = '<option value="">— Primero seleccioná una obra —</option>';
+  openForm('overlay-adicional');
+  _provObra = await fetchTable(TABLES.proveedores_obra);
+}
+function adicObraChange() {
+  const obraId = document.getElementById('adic-obra').value;
+  const sel = document.getElementById('adic-proveedor');
+  if (!obraId) { sel.innerHTML = '<option value="">— Primero seleccioná una obra —</option>'; return; }
+  const provs = _provObra.filter(r => (r.fields.obra_id || []).map(l => l.id || l).includes(obraId));
+  sel.innerHTML = '<option value="">— Seleccionar proveedor —</option>' +
+    provs.map(p => `<option value="${p.id}">${p.fields.proveedor}</option>`).join('');
+}
+async function guardarAdicional() {
+  const obraId = document.getElementById('adic-obra').value;
+  const provId = document.getElementById('adic-proveedor').value;
+  const desc   = document.getElementById('adic-descripcion').value.trim();
+  if (!obraId || !provId || !desc) { showToast('Completá los campos obligatorios (*)', 'error'); return; }
+  const fields = { descripcion: desc, obra_id: [obraId], proveedor_id: [provId] };
+  const mp = parseFloat(document.getElementById('adic-monto-prov').value) || null;
+  const mc = parseFloat(document.getElementById('adic-monto-cli').value)  || null;
+  const fe = document.getElementById('adic-fecha').value;
+  if (mp) fields.monto_proveedor = mp;
+  if (mc) fields.monto_cliente   = mc;
+  if (fe) fields.fecha           = fe;
+  await submitForm('overlay-adicional', TABLES.adicionales, fields, 'Adicional guardado');
+}
+
+// Empleado
+function openFormEmpleado() {
+  document.getElementById('form-empleado').reset();
+  openForm('overlay-empleado');
+}
+async function guardarEmpleado() {
+  const nombre = document.getElementById('emp-nombre').value.trim();
+  if (!nombre) { showToast('El nombre es obligatorio', 'error'); return; }
+  const fields = { nombre_apellido: nombre };
+  const rol  = document.getElementById('emp-rol').value.trim();
+  const dni  = document.getElementById('emp-dni').value.trim();
+  const cel  = document.getElementById('emp-celular').value.trim();
+  const mail = document.getElementById('emp-mail').value.trim();
+  if (rol)  fields.Rol    = rol;
+  if (dni)  fields.dni    = dni;
+  if (cel)  fields.celular = cel;
+  if (mail) fields.mail   = mail;
+  await submitForm('overlay-empleado', TABLES.empleados, fields, 'Empleado guardado');
+}
 
 // --- AUTH ---
 async function cargarConfig() {
