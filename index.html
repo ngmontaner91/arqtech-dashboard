@@ -461,10 +461,10 @@ const TABLES = {
 let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [], config: [] };
 let currentSection = 'resumen';
 
-// Lee el Base ID desde ?base=appXXXX en la URL, o usa el default (tu estudio)
+// Acepta ?estudio=slug (ej: mmcv, griso) o ?base=appXXX, o usa el default
 function getBaseId() {
   const params = new URLSearchParams(window.location.search);
-  return params.get('base') || BASE_ID_DEFAULT;
+  return params.get('estudio') || params.get('base') || BASE_ID_DEFAULT;
 }
 
 // --- Nav ---
