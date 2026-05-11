@@ -450,6 +450,7 @@ const BASE_ID_DEFAULT = 'appYefsAUNtFp4pfY';
 const ADMIN_BASE = 'appyJgf4jNU7ce3SH';
 const ADMIN_ESTUDIOS_TABLE = 'tblxxwwS6aUnjSGtC';
 let PAQUETE = 1;
+let CONFIG_PINS = { admin: null, data: null };
 const TABLES = {
   dashboard:       'tbl6rCGU4vPkkFaVs',
   obras:           'tblkUEc7cYCBLMULL',
@@ -479,7 +480,7 @@ async function fetchEstudioAdmin() {
   if (!slug) return null;
   try {
     const formula = `AND({slug}="${slug}",{activo}=1)`;
-    const url = `${PROXY}/v0/${ADMIN_BASE}/${ADMIN_ESTUDIOS_TABLE}?filterByFormula=${encodeURIComponent(formula)}&fields[]=nombre&fields[]=paquete`;
+    const url = `${PROXY}/v0/${ADMIN_BASE}/${ADMIN_ESTUDIOS_TABLE}?filterByFormula=${encodeURIComponent(formula)}&fields[]=nombre&fields[]=paquete&fields[]=pin_admin&fields[]=pin_data`;
     const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
@@ -1150,6 +1151,10 @@ async function iniciar() {
   const nombre = nombreAdmin || nombreConfig;
   if (nombre) setNombreEstudio(nombre);
 
+  // PINs: Admin tiene prioridad, fallback a CONFIG (compatibilidad con estudios existentes)
+  CONFIG_PINS.admin = adminData?.pin_admin || DATA.config.find(r => r.fields.clave === 'pin_admin')?.fields.url || null;
+  CONFIG_PINS.data  = adminData?.pin_data  || DATA.config.find(r => r.fields.clave === 'pin_data')?.fields.url  || null;
+
   if (rol) {
     if (rol === 'data') mostrarSoloFormularios();
     else document.getElementById('logout-btn').style.display = 'inline-block';
@@ -1157,11 +1162,8 @@ async function iniciar() {
     return;
   }
 
-  const adminPin = DATA.config.find(r => r.fields.clave === 'pin_admin')?.fields.url;
-  const dataPin  = DATA.config.find(r => r.fields.clave === 'pin_data')?.fields.url;
-
   // Si no hay PINs configurados, acceso libre como admin
-  if (!adminPin && !dataPin) {
+  if (!CONFIG_PINS.admin && !CONFIG_PINS.data) {
     sessionStorage.setItem('arqtech_rol', 'admin');
     await cargarTodo();
     return;
@@ -1175,15 +1177,12 @@ async function verificarPin() {
   const input   = document.getElementById('pin-input').value;
   const errorEl = document.getElementById('pin-error');
 
-  const adminPin = DATA.config.find(r => r.fields.clave === 'pin_admin')?.fields.url;
-  const dataPin  = DATA.config.find(r => r.fields.clave === 'pin_data')?.fields.url;
-
-  if (adminPin && input === adminPin) {
+  if (CONFIG_PINS.admin && input === CONFIG_PINS.admin) {
     sessionStorage.setItem('arqtech_rol', 'admin');
     document.getElementById('pin-screen').classList.remove('visible');
     document.getElementById('logout-btn').style.display = 'inline-block';
     await cargarTodo();
-  } else if (dataPin && input === dataPin) {
+  } else if (CONFIG_PINS.data && input === CONFIG_PINS.data) {
     sessionStorage.setItem('arqtech_rol', 'data');
     document.getElementById('pin-screen').classList.remove('visible');
     mostrarSoloFormularios();
