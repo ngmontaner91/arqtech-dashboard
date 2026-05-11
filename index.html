@@ -172,7 +172,7 @@ input:focus{outline:none;border-color:var(--border-strong)}
 </div>
 
 <header>
-  <div class="logo"><span>ARQTECH</span></div>
+  <div class="logo"><span>ARQTECH</span><span id="header-estudio" style="color:var(--text-faint);font-weight:300;margin-left:8px;letter-spacing:.04em"></span></div>
   <nav class="nav">
     <button class="nav-btn active" onclick="showSection('resumen', this)">Resumen</button>
     <button class="nav-btn" onclick="showSection('obras', this)">Obras</button>
@@ -447,6 +447,9 @@ input:focus{outline:none;border-color:var(--border-strong)}
 <script>
 const PROXY = 'https://wandering-sound-8f28.nicolasgmontaner.workers.dev';
 const BASE_ID_DEFAULT = 'appYefsAUNtFp4pfY';
+const ADMIN_BASE = 'appyJgf4jNU7ce3SH';
+const ADMIN_ESTUDIOS_TABLE = 'tblxxwwS6aUnjSGtC';
+let PAQUETE = 1;
 const TABLES = {
   dashboard:       'tbl6rCGU4vPkkFaVs',
   obras:           'tblkUEc7cYCBLMULL',
@@ -465,6 +468,29 @@ let currentSection = 'resumen';
 function getBaseId() {
   const params = new URLSearchParams(window.location.search);
   return params.get('estudio') || params.get('base') || BASE_ID_DEFAULT;
+}
+
+function getSlug() {
+  return new URLSearchParams(window.location.search).get('estudio');
+}
+
+async function fetchEstudioAdmin() {
+  const slug = getSlug();
+  if (!slug) return null;
+  try {
+    const formula = `AND({slug}="${slug}",{activo}=1)`;
+    const url = `${PROXY}/v0/${ADMIN_BASE}/${ADMIN_ESTUDIOS_TABLE}?filterByFormula=${encodeURIComponent(formula)}&fields[]=nombre&fields[]=paquete`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.records?.[0]?.fields || null;
+  } catch { return null; }
+}
+
+function setNombreEstudio(nombre) {
+  document.getElementById('header-estudio').textContent = nombre;
+  document.getElementById('pin-estudio-nombre').textContent = nombre;
+  sessionStorage.setItem('arqtech_nombre', nombre);
 }
 
 // --- Nav ---
@@ -1103,7 +1129,27 @@ async function cargarConfig() {
 }
 
 async function iniciar() {
+  // Mostrar nombre cacheado de sesión anterior mientras carga
+  const cachedNombre = sessionStorage.getItem('arqtech_nombre');
+  if (cachedNombre) setNombreEstudio(cachedNombre);
+
   const rol = sessionStorage.getItem('arqtech_rol');
+
+  // Fetch en paralelo: config de la base + datos del estudio desde Admin
+  const [, adminResult] = await Promise.allSettled([
+    cargarConfig(),
+    fetchEstudioAdmin()
+  ]);
+
+  const adminData = adminResult.status === 'fulfilled' ? adminResult.value : null;
+  if (adminData?.paquete) PAQUETE = adminData.paquete;
+
+  // Nombre: Admin tiene prioridad, fallback a CONFIG, fallback a caché
+  const nombreAdmin  = adminData?.nombre;
+  const nombreConfig = DATA.config.find(r => r.fields.clave === 'nombre_estudio')?.fields.url;
+  const nombre = nombreAdmin || nombreConfig;
+  if (nombre) setNombreEstudio(nombre);
+
   if (rol) {
     if (rol === 'data') mostrarSoloFormularios();
     else document.getElementById('logout-btn').style.display = 'inline-block';
@@ -1111,15 +1157,10 @@ async function iniciar() {
     return;
   }
 
-  try { await cargarConfig(); } catch(e) {}
-
   const adminPin = DATA.config.find(r => r.fields.clave === 'pin_admin')?.fields.url;
   const dataPin  = DATA.config.find(r => r.fields.clave === 'pin_data')?.fields.url;
-  const nombre   = DATA.config.find(r => r.fields.clave === 'nombre_estudio')?.fields.url;
 
-  if (nombre) document.getElementById('pin-estudio-nombre').textContent = nombre;
-
-  // Opción B: si no hay PINs configurados en esta base, acceso libre como admin
+  // Si no hay PINs configurados, acceso libre como admin
   if (!adminPin && !dataPin) {
     sessionStorage.setItem('arqtech_rol', 'admin');
     await cargarTodo();
