@@ -345,6 +345,153 @@ input:focus{outline:none;border-color:var(--border-strong)}
   </div>
 </div>
 
+<!-- Cobro de obra -->
+<div id="overlay-cobro-obra" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-cobro-obra')">
+  <div class="form-panel">
+    <div class="form-panel-header">
+      <span class="form-panel-title">Cobro de obra</span>
+      <button class="form-close" onclick="closeForm('overlay-cobro-obra')">✕</button>
+    </div>
+    <form id="form-cobro-obra" class="form-panel-body" onsubmit="return false">
+      <div class="fg"><label class="fl">Fecha *</label><input id="cobro-fecha" class="fi" type="date"></div>
+      <div class="fg"><label class="fl">Obra *</label>
+        <select id="cobro-obra" class="fs"><option value="">— Seleccionar obra —</option></select>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Monto cobrado *</label><input id="cobro-monto" class="fi mono" type="number" min="0" step="0.01" placeholder="0"></div>
+        <div class="fg"><label class="fl">Moneda</label>
+          <select id="cobro-moneda" class="fs"><option>ARS</option><option>USD</option></select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Medio de pago</label>
+        <select id="cobro-medio" class="fs">
+          <option value="">— Seleccionar —</option>
+          <option>Efectivo</option><option>Transferencia</option><option>Cheque</option><option>Tarjeta</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Comentario</label><textarea id="cobro-comentario" class="ft" placeholder="Notas adicionales..."></textarea></div>
+    </form>
+    <div class="form-panel-footer">
+      <button class="btn btn-outline" onclick="closeForm('overlay-cobro-obra')">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarCobroObra()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pago a proveedor -->
+<div id="overlay-pago-proveedor" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-pago-proveedor')">
+  <div class="form-panel">
+    <div class="form-panel-header">
+      <span class="form-panel-title">Pago a proveedor</span>
+      <button class="form-close" onclick="closeForm('overlay-pago-proveedor')">✕</button>
+    </div>
+    <form id="form-pago-proveedor" class="form-panel-body" onsubmit="return false">
+      <div class="fg"><label class="fl">Fecha *</label><input id="pagoprov-fecha" class="fi" type="date"></div>
+      <div class="fg"><label class="fl">Obra *</label>
+        <select id="pagoprov-obra" class="fs" onchange="cargarProveedoresPorObra(this.value,'pagoprov-proveedor')">
+          <option value="">— Seleccionar obra —</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Proveedor *</label>
+        <select id="pagoprov-proveedor" class="fs"><option value="">— Seleccioná primero una obra —</option></select>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Monto pagado *</label><input id="pagoprov-monto" class="fi mono" type="number" min="0" step="0.01" placeholder="0"></div>
+        <div class="fg"><label class="fl">Moneda</label>
+          <select id="pagoprov-moneda" class="fs"><option>ARS</option><option>USD</option></select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Medio de pago</label>
+        <select id="pagoprov-medio" class="fs">
+          <option value="">— Seleccionar —</option>
+          <option>Efectivo</option><option>Transferencia</option><option>Cheque</option><option>Tarjeta</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Comentario</label><textarea id="pagoprov-comentario" class="ft" placeholder="Notas adicionales..."></textarea></div>
+    </form>
+    <div class="form-panel-footer">
+      <button class="btn btn-outline" onclick="closeForm('overlay-pago-proveedor')">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarPagoProveedor()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pago de sueldo -->
+<div id="overlay-sueldo" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-sueldo')">
+  <div class="form-panel">
+    <div class="form-panel-header">
+      <span class="form-panel-title">Pago de sueldo</span>
+      <button class="form-close" onclick="closeForm('overlay-sueldo')">✕</button>
+    </div>
+    <form id="form-sueldo" class="form-panel-body" onsubmit="return false">
+      <div class="fg"><label class="fl">Fecha *</label><input id="sueldo-fecha" class="fi" type="date"></div>
+      <div class="fg"><label class="fl">Empleado *</label>
+        <select id="sueldo-empleado" class="fs"><option value="">— Seleccionar empleado —</option></select>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Monto del sueldo *</label><input id="sueldo-monto" class="fi mono" type="number" min="0" step="0.01" placeholder="0"></div>
+        <div class="fg"><label class="fl">Moneda</label>
+          <select id="sueldo-moneda" class="fs"><option>ARS</option><option>USD</option></select>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Medio de pago</label>
+        <select id="sueldo-medio" class="fs">
+          <option value="">— Seleccionar —</option>
+          <option>Efectivo</option><option>Transferencia</option><option>Cheque</option><option>Tarjeta</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Comentario</label><textarea id="sueldo-comentario" class="ft" placeholder="Ej: Sueldo abril"></textarea></div>
+    </form>
+    <div class="form-panel-footer">
+      <button class="btn btn-outline" onclick="closeForm('overlay-sueldo')">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarSueldo()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cambio de divisas -->
+<div id="overlay-cambio-divisas" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-cambio-divisas')">
+  <div class="form-panel">
+    <div class="form-panel-header">
+      <span class="form-panel-title">Compra/venta de dólares</span>
+      <button class="form-close" onclick="closeForm('overlay-cambio-divisas')">✕</button>
+    </div>
+    <form id="form-cambio-divisas" class="form-panel-body" onsubmit="return false">
+      <div class="fg"><label class="fl">Fecha *</label><input id="cambio-fecha" class="fi" type="date"></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Moneda que entregás *</label>
+          <select id="cambio-moneda-origen" class="fs" onchange="cambioOrigenChange()"><option>ARS</option><option>USD</option></select>
+        </div>
+        <div class="fg"><label class="fl">Monto que entregás *</label>
+          <input id="cambio-monto-origen" class="fi mono" type="number" min="0" step="0.01" placeholder="0">
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Moneda que recibís *</label>
+          <select id="cambio-moneda-destino" class="fs" onchange="cambioDestinoChange()"><option>USD</option><option>ARS</option></select>
+        </div>
+        <div class="fg"><label class="fl">Monto que recibís *</label>
+          <input id="cambio-monto-destino" class="fi mono" type="number" min="0" step="0.01" placeholder="0">
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Tipo de cambio</label>
+        <input id="cambio-tc" class="fi mono" type="number" step="0.01" placeholder="Ej: 1250.00">
+      </div>
+      <div class="fg"><label class="fl">Medio de pago</label>
+        <select id="cambio-medio" class="fs">
+          <option value="">— Seleccionar —</option>
+          <option>Efectivo</option><option>Transferencia</option><option>Cheque</option><option>Tarjeta</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Comentario</label><textarea id="cambio-comentario" class="ft" placeholder="Notas adicionales..."></textarea></div>
+    </form>
+    <div class="form-panel-footer">
+      <button class="btn btn-outline" onclick="closeForm('overlay-cambio-divisas')">Cancelar</button>
+      <button class="btn btn-solid" onclick="guardarCambioDivisas()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Nueva obra -->
 <div id="overlay-obra" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-obra')">
   <div class="form-panel">
@@ -1113,23 +1260,160 @@ function renderSueldos() {
 
 // --- CARGAR ---
 function renderCargar() {
-  const forms = [
-    { icon: '$',  bg: '#EEF4FB', color: '#1B4F8A', title: 'Nuevo movimiento', sub: 'Registrar ingreso o egreso del estudio', fn: 'openFormMovimiento()' },
+  const movCards = [
+    { icon: '↓$',  bg: '#EEF8F2', color: '#1B6B3A', title: 'Cobro de obra',           sub: 'Registrar pago recibido de un cliente',          fn: "abrirFormulario('cobro-obra')" },
+    { icon: '⚒',   bg: '#FBF4EE', color: '#8A5A1B', title: 'Pago a proveedor',         sub: 'Registrar pago realizado a un proveedor de obra', fn: "abrirFormulario('pago-proveedor')" },
+    { icon: '👤',  bg: '#F1EFE8', color: '#5F5E5A', title: 'Pago de sueldo',           sub: 'Registrar sueldo o liquidación de un empleado',   fn: "abrirFormulario('sueldo')" },
+    { icon: '↔',   bg: '#EEF4FB', color: '#1B4F8A', title: 'Compra/venta de dólares', sub: 'Registrar una operación de cambio de divisas',    fn: "abrirFormulario('cambio-divisas')" },
+    { icon: '···', bg: '#F7F5F0', color: '#7A7670', title: 'Otros movimientos',        sub: 'Formulario completo para casos no contemplados',  fn: "abrirFormulario('otros')" },
+  ];
+  const mgmtCards = [
     { icon: '⌂',  bg: '#EEF8F2', color: '#1B6B3A', title: 'Nueva obra',       sub: 'Dar de alta un nuevo proyecto',          fn: 'openFormObra()' },
     { icon: '⚒',  bg: '#FBF4EE', color: '#8A5A1B', title: 'Nuevo proveedor', sub: 'Cargar proveedor y presupuesto de obra',  fn: 'openFormProveedor()' },
-    { icon: '+',  bg: '#FBEEEE', color: '#8A1B1B', title: 'Nuevo adicional',  sub: 'Registrar imprevisto o adicional de obra',fn: 'openFormAdicional()' },
-    { icon: '👤', bg: '#F1EFE8', color: '#5F5E5A', title: 'Nuevo empleado',   sub: 'Agregar integrante al estudio',          fn: 'openFormEmpleado()' },
+    { icon: '+',  bg: '#FBEEEE', color: '#8A1B1B', title: 'Nuevo adicional',  sub: 'Registrar imprevisto o adicional de obra', fn: 'openFormAdicional()' },
+    { icon: '👤', bg: '#F1EFE8', color: '#5F5E5A', title: 'Nuevo empleado',   sub: 'Agregar integrante al estudio',           fn: 'openFormEmpleado()' },
   ];
-  document.getElementById('cargar-content').innerHTML = forms.map(f =>
-    `<div class="form-card" onclick="${f.fn}" role="button">
-      <div class="form-card-icon" style="background:${f.bg};color:${f.color}">${f.icon}</div>
-      <div>
-        <div class="form-card-title">${f.title}</div>
-        <div class="form-card-sub">${f.sub}</div>
-      </div>
-      <div class="form-card-arrow">→</div>
-    </div>`
-  ).join('');
+  const card = f => `<div class="form-card" onclick="${f.fn}" role="button">
+    <div class="form-card-icon" style="background:${f.bg};color:${f.color}">${f.icon}</div>
+    <div>
+      <div class="form-card-title">${f.title}</div>
+      <div class="form-card-sub">${f.sub}</div>
+    </div>
+    <div class="form-card-arrow">→</div>
+  </div>`;
+  const label = t => `<p style="font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:8px">${t}</p>`;
+  document.getElementById('cargar-content').innerHTML =
+    label('Movimientos') + movCards.map(card).join('') +
+    label('Alta de registros') + mgmtCards.map(card).join('');
+}
+
+// --- FORMULARIOS ESPECIALIZADOS ---
+function abrirFormulario(tipo) {
+  if (tipo === 'otros') { openFormMovimiento(); return; }
+  const hoy = new Date().toISOString().split('T')[0];
+  if (tipo === 'cobro-obra') {
+    document.getElementById('form-cobro-obra').reset();
+    document.getElementById('cobro-fecha').value = hoy;
+    poblarObras('cobro-obra');
+    openForm('overlay-cobro-obra');
+  } else if (tipo === 'pago-proveedor') {
+    document.getElementById('form-pago-proveedor').reset();
+    document.getElementById('pagoprov-fecha').value = hoy;
+    poblarObras('pagoprov-obra');
+    document.getElementById('pagoprov-proveedor').innerHTML = '<option value="">— Seleccioná primero una obra —</option>';
+    openForm('overlay-pago-proveedor');
+  } else if (tipo === 'sueldo') {
+    document.getElementById('form-sueldo').reset();
+    document.getElementById('sueldo-fecha').value = hoy;
+    document.getElementById('sueldo-empleado').innerHTML =
+      '<option value="">— Seleccionar empleado —</option>' +
+      DATA.empleados.map(e => `<option value="${e.id}">${e.fields.nombre_apellido}</option>`).join('');
+    openForm('overlay-sueldo');
+  } else if (tipo === 'cambio-divisas') {
+    document.getElementById('form-cambio-divisas').reset();
+    document.getElementById('cambio-fecha').value = hoy;
+    document.getElementById('cambio-moneda-origen').value = 'ARS';
+    document.getElementById('cambio-moneda-destino').value = 'USD';
+    openForm('overlay-cambio-divisas');
+  }
+}
+
+async function cargarProveedoresPorObra(obraId, selectId) {
+  const sel = document.getElementById(selectId);
+  if (!obraId) { sel.innerHTML = '<option value="">— Seleccioná primero una obra —</option>'; return; }
+  sel.disabled = true;
+  sel.innerHTML = '<option value="">Cargando proveedores...</option>';
+  try {
+    const filter = encodeURIComponent(`FIND("${obraId}", ARRAYJOIN({obra_id}))`);
+    const res    = await fetch(`${PROXY}/v0/${getBaseId()}/${TABLES.proveedores_obra}?filterByFormula=${filter}`);
+    const data   = await res.json();
+    const provs  = data.records || [];
+    sel.innerHTML = provs.length
+      ? '<option value="">— Seleccionar proveedor —</option>' + provs.map(p => `<option value="${p.id}">${p.fields.proveedor || '—'}</option>`).join('')
+      : '<option value="">No hay proveedores para esta obra</option>';
+  } catch { sel.innerHTML = '<option value="">Error al cargar</option>'; }
+  finally  { sel.disabled = false; }
+}
+
+function cambioOrigenChange() {
+  const v = document.getElementById('cambio-moneda-origen').value;
+  document.getElementById('cambio-moneda-destino').value = v === 'ARS' ? 'USD' : 'ARS';
+}
+function cambioDestinoChange() {
+  const v = document.getElementById('cambio-moneda-destino').value;
+  document.getElementById('cambio-moneda-origen').value = v === 'ARS' ? 'USD' : 'ARS';
+}
+
+async function guardarCobroObra() {
+  const fecha  = document.getElementById('cobro-fecha').value;
+  const obraId = document.getElementById('cobro-obra').value;
+  const monto  = parseFloat(document.getElementById('cobro-monto').value);
+  if (!fecha || !obraId || !monto) { showToast('Completá los campos obligatorios (*)', 'error'); return; }
+  const moneda = document.getElementById('cobro-moneda').value;
+  const medio  = document.getElementById('cobro-medio').value;
+  const coment = document.getElementById('cobro-comentario').value.trim();
+  const fields = { fecha, tipo_de_movimiento: 'Ingreso', origen: 'Obras', obra_id: [obraId], monto, moneda };
+  if (medio)  fields.medio_de_pago = medio;
+  if (coment) fields.comentario    = coment;
+  const ok = await submitForm('overlay-cobro-obra', TABLES.base, fields, 'Cobro guardado');
+  if (ok) document.getElementById('form-cobro-obra').reset();
+}
+
+async function guardarPagoProveedor() {
+  const fecha   = document.getElementById('pagoprov-fecha').value;
+  const obraId  = document.getElementById('pagoprov-obra').value;
+  const provId  = document.getElementById('pagoprov-proveedor').value;
+  const monto   = parseFloat(document.getElementById('pagoprov-monto').value);
+  if (!fecha || !obraId || !provId || !monto) { showToast('Completá los campos obligatorios (*)', 'error'); return; }
+  const moneda  = document.getElementById('pagoprov-moneda').value;
+  const medio   = document.getElementById('pagoprov-medio').value;
+  const coment  = document.getElementById('pagoprov-comentario').value.trim();
+  const fields  = { fecha, tipo_de_movimiento: 'Egreso', origen: 'Obras', obra_id: [obraId], proveedor_id: [provId], monto, moneda };
+  if (medio)  fields.medio_de_pago = medio;
+  if (coment) fields.comentario    = coment;
+  const ok = await submitForm('overlay-pago-proveedor', TABLES.base, fields, 'Pago guardado');
+  if (ok) {
+    document.getElementById('form-pago-proveedor').reset();
+    document.getElementById('pagoprov-proveedor').innerHTML = '<option value="">— Seleccioná primero una obra —</option>';
+  }
+}
+
+async function guardarSueldo() {
+  const fecha  = document.getElementById('sueldo-fecha').value;
+  const empId  = document.getElementById('sueldo-empleado').value;
+  const monto  = parseFloat(document.getElementById('sueldo-monto').value);
+  if (!fecha || !empId || !monto) { showToast('Completá los campos obligatorios (*)', 'error'); return; }
+  const moneda = document.getElementById('sueldo-moneda').value;
+  const medio  = document.getElementById('sueldo-medio').value;
+  const coment = document.getElementById('sueldo-comentario').value.trim();
+  const fields = { fecha, tipo_de_movimiento: 'Egreso', origen: 'Sueldos', empleado_id: [empId], monto, moneda };
+  if (medio)  fields.medio_de_pago = medio;
+  if (coment) fields.comentario    = coment;
+  const ok = await submitForm('overlay-sueldo', TABLES.base, fields, 'Sueldo guardado');
+  if (ok) document.getElementById('form-sueldo').reset();
+}
+
+async function guardarCambioDivisas() {
+  const fecha      = document.getElementById('cambio-fecha').value;
+  const mOrig      = document.getElementById('cambio-moneda-origen').value;
+  const montoOrig  = parseFloat(document.getElementById('cambio-monto-origen').value);
+  const mDest      = document.getElementById('cambio-moneda-destino').value;
+  const montoDest  = parseFloat(document.getElementById('cambio-monto-destino').value);
+  if (!fecha || !montoOrig || !montoDest) { showToast('Completá los campos obligatorios (*)', 'error'); return; }
+  if (mOrig === mDest) { showToast('La moneda de origen y destino no pueden ser iguales', 'error'); return; }
+  const tc     = parseFloat(document.getElementById('cambio-tc').value) || null;
+  const medio  = document.getElementById('cambio-medio').value;
+  const coment = document.getElementById('cambio-comentario').value.trim();
+  const fields = { fecha, tipo_de_movimiento: 'Cambio de divisas', moneda_origen: mOrig, monto_origen: montoOrig, moneda_destino: mDest, monto_destino: montoDest };
+  if (tc)     fields.tc            = tc;
+  if (medio)  fields.medio_de_pago = medio;
+  if (coment) fields.comentario    = coment;
+  const ok = await submitForm('overlay-cambio-divisas', TABLES.base, fields, 'Cambio guardado');
+  if (ok) {
+    document.getElementById('form-cambio-divisas').reset();
+    document.getElementById('cambio-moneda-origen').value = 'ARS';
+    document.getElementById('cambio-moneda-destino').value = 'USD';
+  }
 }
 
 // --- CARGA PRINCIPAL ---
