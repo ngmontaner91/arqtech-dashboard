@@ -1044,27 +1044,26 @@ function renderCargar() {
 // --- CARGA PRINCIPAL ---
 async function cargarTodo() {
   try {
-    const [dashboardRaw, baseRaw, obras, empleados, proveedores, config] = await Promise.all([
+    const [dashboardRaw, baseRaw, obras, empleados, proveedoresRaw, proveedoresObraRaw, adicionales, config] = await Promise.all([
       fetchTable(TABLES.dashboard),
       fetchTable(TABLES.base),
       fetchTable(TABLES.obras),
       fetchTable(TABLES.empleados),
       fetchTable(TABLES.proveedores),
+      fetchTable(TABLES.proveedores_obra),
+      fetchTable(TABLES.adicionales),
       fetchTable(TABLES.config)
     ]);
 
-    // Combinar DASHBOARD + BASE sin duplicados (cada tabla tiene sus propios record IDs)
+    // Combinar DASHBOARD + BASE sin duplicados
     const movMap = new Map();
     [...dashboardRaw, ...baseRaw].forEach(r => movMap.set(r.id, r));
     const dashboard = Array.from(movMap.values());
 
-    // Normalizar campos que pueden faltar según la base
+    // Normalizar movimientos: mes_anio y obra_nombre si faltan
     dashboard.forEach(r => {
-      // mes_anio: calcular desde fecha si no existe como campo fórmula
-      if (!r.fields.mes_anio && r.fields.fecha) {
+      if (!r.fields.mes_anio && r.fields.fecha)
         r.fields.mes_anio = r.fields.fecha.substring(0, 7);
-      }
-      // obra_nombre: resolver desde la tabla OBRAS si solo hay obra_id
       if (!r.fields.obra_nombre && r.fields.obra_id?.length) {
         const obraId = r.fields.obra_id[0]?.id || r.fields.obra_id[0];
         const obra = obras.find(o => o.id === obraId);
@@ -1072,7 +1071,40 @@ async function cargarTodo() {
       }
     });
 
-    DATA = { dashboard, obras, empleados, proveedores, config };
+    // Normalizar proveedores: si RESUMEN_PROVEEDORES vacío, construir desde PROVEEDORES_OBRA + ADICIONALES
+    let proveedores = proveedoresRaw;
+    if (!proveedores.length && proveedoresObraRaw.length) {
+      const obraMap = {};
+      obras.forEach(o => obraMap[o.id] = o.fields.nombre);
+
+      proveedoresObraRaw.forEach(r => {
+        const f = r.fields;
+        const obraId = f.obra_id?.[0]?.id || f.obra_id?.[0];
+        proveedores.push({ id: r.id, fields: {
+          obra:         obraMap[obraId] || '',
+          proveedor:    f.proveedor || '—',
+          rubro:        f.rubro || '',
+          tipo:         'Presupuesto',
+          monto_cliente: f.monto_cliente || f.presupuesto || 0
+        }});
+      });
+
+      adicionales.forEach(r => {
+        const f = r.fields;
+        const obraId  = f.obra_id?.[0]?.id  || f.obra_id?.[0];
+        const provId  = f.proveedor_id?.[0]?.id || f.proveedor_id?.[0];
+        const provRec = proveedoresObraRaw.find(p => p.id === provId);
+        proveedores.push({ id: r.id, fields: {
+          obra:         obraMap[obraId] || '',
+          proveedor:    provRec?.fields?.proveedor || '—',
+          rubro:        provRec?.fields?.rubro || '',
+          tipo:         'Adicional',
+          monto_cliente: f.monto_cliente || 0
+        }});
+      });
+    }
+
+    DATA = { dashboard, obras, empleados, proveedores, proveedoresObra: proveedoresObraRaw, config };
     renderCargar();
 
     // Destruir charts anteriores
@@ -1242,7 +1274,7 @@ async function openFormAdicional() {
   poblarObras('adic-obra');
   document.getElementById('adic-proveedor').innerHTML = '<option value="">— Primero seleccioná una obra —</option>';
   openForm('overlay-adicional');
-  _provObra = await fetchTable(TABLES.proveedores_obra);
+  _provObra = DATA.proveedoresObra?.length ? DATA.proveedoresObra : await fetchTable(TABLES.proveedores_obra);
 }
 function adicObraChange() {
   const obraId = document.getElementById('adic-obra').value;
