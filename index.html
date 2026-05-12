@@ -706,14 +706,14 @@ function renderResumen() {
             const monLbl = esCambio ? `${r.fields.moneda_origen||'?'}→${r.fields.moneda_destino||'?'}` : (r.fields.moneda||'ARS');
             const montoDisp = esCambio ? fmtM(r.fields.monto_origen||0, r.fields.moneda_origen||'ARS') : fmtM(r.fields.monto||0, r.fields.moneda||'ARS');
             const colorMonto = esCambio ? 'var(--text-muted)' : (r.fields.tipo_de_movimiento==='Ingreso'?'var(--green)':'var(--red)');
-            return \`<tr>
-              <td class="mono">\${r.fields.fecha||''}</td>
-              <td>\${r.fields.concepto||'—'}</td>
-              <td><span class="tag tag-gray">\${esCambio?'Cambio':(r.fields.origen||'—')}</span></td>
-              <td><span class="tag \${esCambio?'tag-blue':r.fields.tipo_de_movimiento==='Ingreso'?'tag-green':'tag-red'}">\${esCambio?'Cambio de divisas':(r.fields.tipo_de_movimiento||'—')}</span></td>
-              <td style="font-size:11px;font-family:'DM Mono',monospace">\${monLbl}</td>
-              <td class="num mono" style="color:\${colorMonto}">\${montoDisp}</td>
-            </tr>\`;
+            return `<tr>
+              <td class="mono">${r.fields.fecha||''}</td>
+              <td>${r.fields.concepto||'—'}</td>
+              <td><span class="tag tag-gray">${esCambio?'Cambio':(r.fields.origen||'—')}</span></td>
+              <td><span class="tag ${esCambio?'tag-blue':r.fields.tipo_de_movimiento==='Ingreso'?'tag-green':'tag-red'}">${esCambio?'Cambio de divisas':(r.fields.tipo_de_movimiento||'—')}</span></td>
+              <td style="font-size:11px;font-family:'DM Mono',monospace">${monLbl}</td>
+              <td class="num mono" style="color:${colorMonto}">${montoDisp}</td>
+            </tr>`;
           }).join('')}
         </tbody>
       </table>
