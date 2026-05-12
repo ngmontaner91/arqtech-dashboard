@@ -849,7 +849,24 @@ function verObra(obraId) {
 // --- PROVEEDORES ---
 function renderProveedores() {
   const filtro = document.getElementById('obraSelect')?.value || '';
-  const todos = DATA.proveedores;
+
+  // Usar RESUMEN_PROVEEDORES si tiene datos; si no, construir desde PROVEEDORES_OBRA
+  let todos = DATA.proveedores;
+  if (!todos.length && DATA.proveedoresObra?.length) {
+    const obraMap = {};
+    DATA.obras.forEach(o => obraMap[o.id] = o.fields.nombre);
+    todos = DATA.proveedoresObra.map(r => ({
+      id: r.id,
+      fields: {
+        obra:          obraMap[r.fields.obra_id?.[0]?.id || r.fields.obra_id?.[0]] || '',
+        proveedor:     r.fields.proveedor || '—',
+        rubro:         r.fields.rubro || '',
+        tipo:          'Presupuesto',
+        monto_cliente: r.fields.monto_cliente || r.fields.presupuesto || 0
+      }
+    }));
+  }
+
   const filtered = filtro ? todos.filter(r => r.fields.obra === filtro) : todos;
 
   // Presupuesto y adicionales usan monto_cliente (lo que se cobra al cliente)
@@ -932,7 +949,9 @@ function renderProveedores() {
 }
 
 function poblarSelectorObras() {
-  const obras = [...new Set(DATA.proveedores.map(r=>r.fields.obra).filter(Boolean))].sort();
+  const fuente = DATA.proveedores.length ? DATA.proveedores
+    : (DATA.proveedoresObra || []).map(r => ({ fields: { obra: DATA.obras.find(o=>o.id===(r.fields.obra_id?.[0]?.id||r.fields.obra_id?.[0]))?.fields?.nombre || '' }}));
+  const obras = [...new Set(fuente.map(r=>r.fields.obra).filter(Boolean))].sort();
   const sel = document.getElementById('obraSelect');
   if (!sel) return;
   sel.innerHTML = '<option value="">Todas las obras</option>' + obras.map(o=>`<option value="${o}">${o}</option>`).join('');
