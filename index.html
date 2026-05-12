@@ -190,8 +190,19 @@ input:focus{outline:none;border-color:var(--border-strong)}
 <!-- RESUMEN -->
 <main>
 <div id="s-resumen" class="section active">
-  <p class="section-title">Resumen general</p>
-  <p class="section-sub" id="resumen-sub">Cargando...</p>
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap">
+    <div>
+      <p class="section-title">Resumen general</p>
+      <p class="section-sub" id="resumen-sub" style="margin-bottom:0">Cargando...</p>
+    </div>
+    <select id="periodo-select" onchange="periodoResumen=this.value;renderResumen()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 32px 7px 12px;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer">
+      <option value="mes">Este mes</option>
+      <option value="3m">Últimos 3 meses</option>
+      <option value="6m">Últimos 6 meses</option>
+      <option value="anio">Este año</option>
+      <option value="todo">Todo</option>
+    </select>
+  </div>
   <div id="resumen-content"><div class="loading-state"><div class="spinner"></div>Cargando datos...</div></div>
 </div>
 
@@ -469,6 +480,7 @@ const TABLES = {
 
 let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [], config: [] };
 let currentSection = 'resumen';
+let periodoResumen = 'mes';
 
 // Acepta ?estudio=slug (ej: mmcv, griso) o ?base=appXXX, o usa el default
 function getBaseId() {
@@ -548,10 +560,25 @@ function mesesAnteriores(n) {
 }
 
 // --- RESUMEN ---
+function filtrarMovsPorPeriodo(mov, periodo) {
+  if (periodo === 'mes')  return mov.filter(r => r.fields.mes_anio === mesActual());
+  if (periodo === '3m')   { const m = mesesAnteriores(2); return mov.filter(r => m.includes(r.fields.mes_anio)); }
+  if (periodo === '6m')   { const m = mesesAnteriores(5); return mov.filter(r => m.includes(r.fields.mes_anio)); }
+  if (periodo === 'anio') { const y = new Date().getFullYear().toString(); return mov.filter(r => r.fields.mes_anio?.startsWith(y)); }
+  return mov; // 'todo'
+}
+
+function labelPeriodo(periodo) {
+  if (periodo === 'mes')  return `Mes corriente: ${fmtMes(mesActual())}`;
+  if (periodo === '3m')   return 'Últimos 3 meses';
+  if (periodo === '6m')   return 'Últimos 6 meses';
+  if (periodo === 'anio') return `Año ${new Date().getFullYear()}`;
+  return 'Todo el período';
+}
+
 function renderResumen() {
   const mov = DATA.dashboard;
-  const mes = mesActual();
-  const movMes = mov.filter(r => r.fields.mes_anio === mes);
+  const movMes = filtrarMovsPorPeriodo(mov, periodoResumen);
 
   const ingresosMes = movMes.filter(r => r.fields.tipo_de_movimiento === 'Ingreso').reduce((s,r) => s + (r.fields.monto||0), 0);
   const egresosMes = movMes.filter(r => r.fields.tipo_de_movimiento === 'Egreso').reduce((s,r) => s + (r.fields.monto||0), 0);
@@ -585,7 +612,7 @@ function renderResumen() {
     egresosPorOrigen[o] = (egresosPorOrigen[o]||0) + (r.fields.monto||0);
   });
 
-  document.getElementById('resumen-sub').textContent = `Mes corriente: ${fmtMes(mes)}`;
+  document.getElementById('resumen-sub').textContent = labelPeriodo(periodoResumen);
 
   document.getElementById('resumen-content').innerHTML = `
     <div class="stat-grid stat-grid-3" style="margin-bottom:16px">
