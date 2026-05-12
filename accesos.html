@@ -64,7 +64,7 @@ const ADMIN_BASE            = 'appyJgf4jNU7ce3SH';
 const ADMIN_ESTUDIOS_TABLE  = 'tblxxwwS6aUnjSGtC';
 
 function urlEstudio(e) {
-  if (e.paquete === 2) return 'https://ngmontaner91.github.io/mmcv';
+  if (Number(e.paquete) === 2) return 'https://ngmontaner91.github.io/mmcv';
   return `https://arqtech-dashboard.pages.dev?estudio=${e.slug}`;
 }
 
@@ -94,7 +94,7 @@ async function cargar() {
 
     document.getElementById('lista').innerHTML = estudios.map(e => {
       const link = urlEstudio(e);
-      const paqueteTag = e.paquete === 2
+      const paqueteTag = Number(e.paquete) === 2
         ? '<span class="tag tag-gray">Paquete 2 — Pagos</span>'
         : '<span class="tag tag-blue">Paquete 1 — Dashboard</span>';
       return `<div class="card">
