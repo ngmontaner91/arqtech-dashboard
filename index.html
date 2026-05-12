@@ -398,6 +398,11 @@ input:focus{outline:none;border-color:var(--border-strong)}
   </div>
 </div>
 
+<!-- Detalle de obra -->
+<div id="obra-detail-overlay" class="form-overlay" onclick="if(event.target===this)closeForm('obra-detail-overlay')">
+  <div id="obra-detail-panel"></div>
+</div>
+
 <!-- Nuevo empleado -->
 <div id="overlay-empleado" class="form-overlay" onclick="if(event.target===this)closeForm('overlay-empleado')">
   <div class="form-panel">
@@ -676,7 +681,7 @@ function renderObras() {
     const eg = f.total_egresos || 0;
     const bal = f.total_balance || (ing - eg);
     const cat = f.Categoría?.name || f.Categoría || '';
-    return `<div class="obra-card">
+    return `<div class="obra-card" onclick="verObra('${o.id}')" style="cursor:pointer">
       <div style="min-height:48px;margin-bottom:8px">
         <div class="obra-card-name">${f.nombre||'—'}</div>
       </div>
@@ -699,6 +704,119 @@ function renderObras() {
   }).join('')}</div>`;
 
   document.getElementById('obras-content').innerHTML = html;
+}
+
+// --- DETALLE OBRA ---
+function verObra(obraId) {
+  const obra = DATA.obras.find(o => o.id === obraId);
+  if (!obra) return;
+  const f = obra.fields;
+  const nombre = f.nombre || '—';
+  const cat    = f.Categoría?.name || f.Categoría || '';
+  const estado = f.estado || '';
+  const desc   = f.descripcion || '';
+  const ing    = f.total_ingresos || 0;
+  const eg     = f.total_egresos  || 0;
+  const bal    = f.total_balance  || (ing - eg);
+
+  const fechas = [
+    f.fecha_inicio         && `Inicio: ${f.fecha_inicio}`,
+    f.fecha_fin_estimada   && `Fin est.: ${f.fecha_fin_estimada}`
+  ].filter(Boolean).join(' · ');
+
+  // Movimientos de esta obra
+  const movs = DATA.dashboard
+    .filter(r => r.fields.origen === 'Obras' && r.fields.obra_nombre === nombre)
+    .sort((a, b) => (b.fields.fecha || '').localeCompare(a.fields.fecha || ''));
+
+  // Proveedores de esta obra (agrupa presupuesto + adicionales por proveedor)
+  const provMap = {};
+  DATA.proveedores.filter(r => r.fields.obra === nombre).forEach(r => {
+    const key = r.fields.proveedor || '—';
+    if (!provMap[key]) provMap[key] = { proveedor: key, rubro: r.fields.rubro || '', pres: 0, adic: 0 };
+    const tipo = (r.fields.tipo || '').toLowerCase();
+    if (tipo.includes('presupuesto'))    provMap[key].pres += (r.fields.monto_cliente || 0);
+    else if (tipo.includes('adicional')) provMap[key].adic += (r.fields.monto_cliente || 0);
+  });
+  const provRows = Object.values(provMap);
+
+  const estadoBadge = estado
+    ? `<span class="status ${estado === 'En curso' ? 'status-active' : 'status-done'}">${estado}</span>`
+    : '';
+
+  document.getElementById('obra-detail-panel').innerHTML = `
+    <div class="form-panel" style="max-width:720px">
+      <div class="form-panel-header">
+        <div style="flex:1;min-width:0">
+          <div class="form-panel-title">${nombre}</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap">
+            ${estadoBadge}
+            ${cat ? `<span class="tag tag-blue">${cat}</span>` : ''}
+            ${fechas ? `<span style="font-size:11px;color:var(--text-faint);font-family:'DM Mono',monospace">${fechas}</span>` : ''}
+          </div>
+          ${desc ? `<div style="font-size:12px;color:var(--text-muted);margin-top:8px;line-height:1.5">${desc}</div>` : ''}
+        </div>
+        <button class="form-close" onclick="closeForm('obra-detail-overlay')">✕</button>
+      </div>
+      <div class="form-panel-body">
+
+        <div class="stat-grid stat-grid-3" style="margin-bottom:24px">
+          <div class="stat-card"><div class="stat-label">Balance</div><div class="stat-value ${bal >= 0 ? 'green' : 'red'}">${fmt(bal)}</div></div>
+          <div class="stat-card"><div class="stat-label">Ingresos</div><div class="stat-value blue">${fmt(ing)}</div></div>
+          <div class="stat-card"><div class="stat-label">Egresos</div><div class="stat-value red">${fmt(eg)}</div></div>
+        </div>
+
+        ${provRows.length ? `
+        <div class="table-wrap" style="margin-bottom:20px">
+          <div class="table-header"><span class="table-title-sm">Proveedores</span></div>
+          <table>
+            <thead><tr>
+              <th>Proveedor</th><th class="num">Presupuesto</th><th class="num">Adicionales</th><th class="num">Total</th>
+            </tr></thead>
+            <tbody>
+              ${provRows.map(r => `<tr>
+                <td>
+                  <div style="font-weight:500">${r.proveedor}</div>
+                  ${r.rubro ? `<div style="font-size:11px;color:var(--text-muted)">${r.rubro}</div>` : ''}
+                </td>
+                <td class="num mono">${fmt(r.pres)}</td>
+                <td class="num mono" style="color:${r.adic ? 'var(--amber)' : 'var(--text-faint)'}">${r.adic ? fmt(r.adic) : '—'}</td>
+                <td class="num mono" style="font-weight:500">${fmt(r.pres + r.adic)}</td>
+              </tr>`).join('')}
+            </tbody>
+            <tfoot><tr>
+              <td>Total</td>
+              <td class="num">${fmt(provRows.reduce((s,r) => s + r.pres, 0))}</td>
+              <td class="num" style="color:var(--amber)">${fmt(provRows.reduce((s,r) => s + r.adic, 0))}</td>
+              <td class="num">${fmt(provRows.reduce((s,r) => s + r.pres + r.adic, 0))}</td>
+            </tr></tfoot>
+          </table>
+        </div>` : ''}
+
+        <div class="table-wrap">
+          <div class="table-header">
+            <span class="table-title-sm">Movimientos</span>
+            <span style="font-size:11px;color:var(--text-faint);font-family:'DM Mono',monospace">${movs.length} registro${movs.length !== 1 ? 's' : ''}</span>
+          </div>
+          ${movs.length ? `<table>
+            <thead><tr>
+              <th>Fecha</th><th>Concepto</th><th>Tipo</th><th class="num">Monto</th>
+            </tr></thead>
+            <tbody>
+              ${movs.map(r => `<tr>
+                <td class="mono">${r.fields.fecha || ''}</td>
+                <td>${r.fields.concepto || '—'}</td>
+                <td><span class="tag ${r.fields.tipo_de_movimiento === 'Ingreso' ? 'tag-green' : 'tag-red'}">${r.fields.tipo_de_movimiento || '—'}</span></td>
+                <td class="num mono" style="color:${r.fields.tipo_de_movimiento === 'Ingreso' ? 'var(--green)' : 'var(--red)'}">${fmt(r.fields.monto)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>` : '<div class="empty-state" style="padding:32px 24px">No hay movimientos registrados para esta obra.</div>'}
+        </div>
+
+      </div>
+    </div>`;
+
+  openForm('obra-detail-overlay');
 }
 
 // --- PROVEEDORES ---
