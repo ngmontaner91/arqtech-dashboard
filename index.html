@@ -156,6 +156,9 @@ input:focus{outline:none;border-color:var(--border-strong)}
 .toast{position:fixed;bottom:28px;right:28px;background:var(--text);color:#fff;font-size:13px;padding:11px 18px;border-radius:10px;z-index:600;opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s;pointer-events:none}
 .toast.visible{opacity:1;transform:translateY(0)}
 .toast.terror{background:var(--red)}
+/* Chart currency toggle */
+.chart-toggle{font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--text-muted);cursor:pointer;transition:all .15s}
+.chart-toggle.active{background:var(--text);color:#fff;border-color:var(--text)}
 </style>
 </head>
 <body>
@@ -275,9 +278,10 @@ input:focus{outline:none;border-color:var(--border-strong)}
       <div class="frow">
         <div class="fg"><label class="fl">Fecha *</label><input id="mov-fecha" class="fi" type="date"></div>
         <div class="fg"><label class="fl">Tipo *</label>
-          <select id="mov-tipo" class="fs"><option value="">— Seleccionar —</option><option>Ingreso</option><option>Egreso</option></select>
+          <select id="mov-tipo" class="fs" onchange="movTipoChange()"><option value="">— Seleccionar —</option><option>Ingreso</option><option>Egreso</option><option>Cambio de divisas</option></select>
         </div>
       </div>
+      <div id="mov-normal-fields">
       <div class="fg"><label class="fl">Origen *</label>
         <select id="mov-origen" class="fs" onchange="movOrigenChange()">
           <option value="">— Seleccionar —</option>
@@ -302,6 +306,29 @@ input:focus{outline:none;border-color:var(--border-strong)}
       </div>
       <div id="mov-tc-group" class="fg" style="display:none">
         <label class="fl">Tipo de cambio</label><input id="mov-tc" class="fi mono" type="number" step="0.01" placeholder="0.00">
+      </div>
+      </div>
+      <div id="mov-cambio-fields" style="display:none">
+      <div class="form-sep"></div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Moneda que entregás *</label>
+          <select id="mov-moneda-origen" class="fs"><option>ARS</option><option>USD</option></select>
+        </div>
+        <div class="fg"><label class="fl">Monto que entregás *</label>
+          <input id="mov-monto-origen" class="fi mono" type="number" min="0" step="0.01" placeholder="0">
+        </div>
+      </div>
+      <div class="frow">
+        <div class="fg"><label class="fl">Moneda que recibís *</label>
+          <select id="mov-moneda-destino" class="fs"><option>USD</option><option>ARS</option></select>
+        </div>
+        <div class="fg"><label class="fl">Monto que recibís *</label>
+          <input id="mov-monto-destino" class="fi mono" type="number" min="0" step="0.01" placeholder="0">
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Tipo de cambio aplicado</label>
+        <input id="mov-tc-cambio" class="fi mono" type="number" step="0.01" placeholder="Ej: 1250.00">
+      </div>
       </div>
       <div class="fg"><label class="fl">Medio de pago</label>
         <select id="mov-medio" class="fs">
@@ -481,6 +508,7 @@ const TABLES = {
 let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [], config: [] };
 let currentSection = 'resumen';
 let periodoResumen = 'mes';
+let monedaChart = 'ARS';
 
 // Acepta ?estudio=slug (ej: mmcv, griso) o ?base=appXXX, o usa el default
 function getBaseId() {
@@ -539,6 +567,11 @@ function fmt(n) {
   if (!n && n !== 0) return '—';
   return '$ ' + Math.round(n).toLocaleString('es-AR');
 }
+function fmtM(n, moneda) {
+  if (!n && n !== 0) return '—';
+  if (moneda === 'USD') return 'USD ' + Math.round(n).toLocaleString('en-US');
+  return '$ ' + Math.round(n).toLocaleString('es-AR');
+}
 function fmtMes(yyyymm) {
   if (!yyyymm) return '';
   const [y, m] = yyyymm.split('-');
@@ -579,86 +612,113 @@ function labelPeriodo(periodo) {
 function renderResumen() {
   const mov = DATA.dashboard;
   const movMes = filtrarMovsPorPeriodo(mov, periodoResumen);
+  const normales = movMes.filter(r => r.fields.tipo_de_movimiento !== 'Cambio de divisas');
+  const cambios  = movMes.filter(r => r.fields.tipo_de_movimiento === 'Cambio de divisas');
 
-  const ingresosMes = movMes.filter(r => r.fields.tipo_de_movimiento === 'Ingreso').reduce((s,r) => s + (r.fields.monto||0), 0);
-  const egresosMes = movMes.filter(r => r.fields.tipo_de_movimiento === 'Egreso').reduce((s,r) => s + (r.fields.monto||0), 0);
-  const balanceMes = ingresosMes - egresosMes;
+  function calcIng(ns, cs, m) {
+    return ns.filter(r=>r.fields.tipo_de_movimiento==='Ingreso'&&(r.fields.moneda||'ARS')===m).reduce((s,r)=>s+(r.fields.monto||0),0)
+         + cs.filter(r=>r.fields.moneda_destino===m).reduce((s,r)=>s+(r.fields.monto_destino||0),0);
+  }
+  function calcEg(ns, cs, m) {
+    return ns.filter(r=>r.fields.tipo_de_movimiento==='Egreso'&&(r.fields.moneda||'ARS')===m).reduce((s,r)=>s+(r.fields.monto||0),0)
+         + cs.filter(r=>r.fields.moneda_origen===m).reduce((s,r)=>s+(r.fields.monto_origen||0),0);
+  }
 
-  const obrasMes = movMes.filter(r => r.fields.origen === 'Obras');
+  const ingARS = calcIng(normales, cambios, 'ARS');
+  const egARS  = calcEg(normales, cambios, 'ARS');
+  const balARS = ingARS - egARS;
+  const ingUSD = calcIng(normales, cambios, 'USD');
+  const egUSD  = calcEg(normales, cambios, 'USD');
+  const balUSD = ingUSD - egUSD;
+
+  const obrasMes = normales.filter(r => r.fields.origen === 'Obras' && (r.fields.moneda||'ARS') === 'ARS');
   const balanceObras = obrasMes.filter(r=>r.fields.tipo_de_movimiento==='Ingreso').reduce((s,r)=>s+(r.fields.monto||0),0)
                      - obrasMes.filter(r=>r.fields.tipo_de_movimiento==='Egreso').reduce((s,r)=>s+(r.fields.monto||0),0);
-  const sueldosMes = movMes.filter(r=>r.fields.origen==='Sueldos').reduce((s,r)=>s+(r.fields.monto||0),0);
-  const otrosMes = movMes.filter(r=>r.fields.origen!=='Obras'&&r.fields.origen!=='Sueldos').reduce((s,r)=>{
-    const v = r.fields.tipo_de_movimiento==='Ingreso'?(r.fields.monto||0):-(r.fields.monto||0);
-    return s+v;
-  },0);
+  const sueldosMes = normales.filter(r=>r.fields.origen==='Sueldos'&&(r.fields.moneda||'ARS')==='ARS').reduce((s,r)=>s+(r.fields.monto||0),0);
 
-  // Evolutivo 6 meses
-  const meses6 = mesesAnteriores(5);
-  const evolData = meses6.map(m => {
-    const r = mov.filter(x => x.fields.mes_anio === m);
-    const ing = r.filter(x=>x.fields.tipo_de_movimiento==='Ingreso').reduce((s,x)=>s+(x.fields.monto||0),0);
-    const eg = r.filter(x=>x.fields.tipo_de_movimiento==='Egreso').reduce((s,x)=>s+(x.fields.monto||0),0);
-    return { mes: m, ing, eg, bal: ing - eg };
-  });
-
-  // Últimos movimientos
-  const ultimos = [...mov].sort((a,b) => (b.fields.fecha||'').localeCompare(a.fields.fecha||'')).slice(0, 10);
-
-  // Egresos por origen
   const egresosPorOrigen = {};
-  movMes.filter(r=>r.fields.tipo_de_movimiento==='Egreso').forEach(r => {
+  normales.filter(r=>r.fields.tipo_de_movimiento==='Egreso'&&(r.fields.moneda||'ARS')==='ARS').forEach(r => {
     const o = r.fields.origen || 'Otros';
     egresosPorOrigen[o] = (egresosPorOrigen[o]||0) + (r.fields.monto||0);
   });
 
+  // Evolutivo 6 meses — moneda seleccionada
+  const meses6 = mesesAnteriores(5);
+  const mn = monedaChart;
+  const evolData = meses6.map(m => {
+    const r = mov.filter(x => x.fields.mes_anio === m);
+    const normR = r.filter(x => x.fields.tipo_de_movimiento !== 'Cambio de divisas');
+    const cambR = r.filter(x => x.fields.tipo_de_movimiento === 'Cambio de divisas');
+    const ing = calcIng(normR, cambR, mn);
+    const eg  = calcEg(normR, cambR, mn);
+    return { mes: m, ing, eg, bal: ing - eg };
+  });
+
+  const ultimos = [...mov].sort((a,b) => (b.fields.fecha||'').localeCompare(a.fields.fecha||'')).slice(0, 10);
+
   document.getElementById('resumen-sub').textContent = labelPeriodo(periodoResumen);
 
   document.getElementById('resumen-content').innerHTML = `
+    <div class="stat-grid stat-grid-3" style="margin-bottom:8px">
+      <div class="stat-card"><div class="stat-label">Balance ARS</div><div class="stat-value ${balARS>=0?'green':'red'}">${fmtM(balARS,'ARS')}</div></div>
+      <div class="stat-card"><div class="stat-label">Ingresos ARS</div><div class="stat-value blue">${fmtM(ingARS,'ARS')}</div></div>
+      <div class="stat-card"><div class="stat-label">Egresos ARS</div><div class="stat-value red">${fmtM(egARS,'ARS')}</div></div>
+    </div>
     <div class="stat-grid stat-grid-3" style="margin-bottom:16px">
-      <div class="stat-card"><div class="stat-label">Balance del mes</div><div class="stat-value ${balanceMes>=0?'green':'red'}">${fmt(balanceMes)}</div></div>
-      <div class="stat-card"><div class="stat-label">Ingresos del mes</div><div class="stat-value blue">${fmt(ingresosMes)}</div></div>
-      <div class="stat-card"><div class="stat-label">Egresos del mes</div><div class="stat-value red">${fmt(egresosMes)}</div></div>
+      <div class="stat-card"><div class="stat-label">Balance USD</div><div class="stat-value ${balUSD>=0?'green':'red'}">${fmtM(balUSD,'USD')}</div></div>
+      <div class="stat-card"><div class="stat-label">Ingresos USD</div><div class="stat-value blue">${fmtM(ingUSD,'USD')}</div></div>
+      <div class="stat-card"><div class="stat-label">Egresos USD</div><div class="stat-value red">${fmtM(egUSD,'USD')}</div></div>
     </div>
     <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:24px">
-      <div class="stat-card"><div class="stat-label">Balance obras</div><div class="stat-value ${balanceObras>=0?'green':'red'}">${fmt(balanceObras)}</div></div>
-      <div class="stat-card"><div class="stat-label">Sueldos</div><div class="stat-value red">${fmt(sueldosMes)}</div></div>
+      <div class="stat-card"><div class="stat-label">Balance obras ARS</div><div class="stat-value ${balanceObras>=0?'green':'red'}">${fmt(balanceObras)}</div></div>
+      <div class="stat-card"><div class="stat-label">Sueldos ARS</div><div class="stat-value red">${fmt(sueldosMes)}</div></div>
       ${Object.entries(egresosPorOrigen).filter(([k])=>k!=='Obras'&&k!=='Sueldos').map(([k,v])=>`<div class="stat-card"><div class="stat-label">${k}</div><div class="stat-value amber">${fmt(v)}</div></div>`).join('')}
     </div>
     <div class="chart-full">
-      <div class="chart-title">Evolutivo mensual — últimos 6 meses</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="chart-title" style="margin-bottom:0">Evolutivo mensual — últimos 6 meses</div>
+        <div style="display:flex;gap:4px">
+          <button class="chart-toggle${monedaChart==='ARS'?' active':''}" onclick="setMonedaChart('ARS')">ARS</button>
+          <button class="chart-toggle${monedaChart==='USD'?' active':''}" onclick="setMonedaChart('USD')">USD</button>
+        </div>
+      </div>
       <canvas id="chartEvol" height="80"></canvas>
     </div>
     <div class="chart-grid" style="grid-template-columns:1fr 1fr;max-width:none">
       <div class="chart-wrap">
-        <div class="chart-title">Movimientos del mes</div>
+        <div class="chart-title">Movimientos del mes — ARS</div>
         <canvas id="chartTorta1" height="55"></canvas>
       </div>
       <div class="chart-wrap">
-        <div class="chart-title">Gastos por origen</div>
+        <div class="chart-title">Gastos por origen — ARS</div>
         <canvas id="chartTorta2" height="55"></canvas>
       </div>
-
     </div>
     <div class="table-wrap">
       <div class="table-header"><span class="table-title-sm">Últimos movimientos</span></div>
       <table>
         <thead><tr>
-          <th>Fecha</th><th>Concepto</th><th>Origen</th><th>Tipo</th><th class="num">Monto</th>
+          <th>Fecha</th><th>Concepto</th><th>Origen</th><th>Tipo</th><th>Moneda</th><th class="num">Monto</th>
         </tr></thead>
         <tbody>
-          ${ultimos.map(r => `<tr>
-            <td class="mono">${r.fields.fecha||''}</td>
-            <td>${r.fields.concepto||'—'}</td>
-            <td><span class="tag tag-gray">${r.fields.origen||'—'}</span></td>
-            <td><span class="tag ${r.fields.tipo_de_movimiento==='Ingreso'?'tag-green':'tag-red'}">${r.fields.tipo_de_movimiento||'—'}</span></td>
-            <td class="num mono" style="color:${r.fields.tipo_de_movimiento==='Ingreso'?'var(--green)':'var(--red)'}">${fmt(r.fields.monto)}</td>
-          </tr>`).join('')}
+          ${ultimos.map(r => {
+            const esCambio = r.fields.tipo_de_movimiento === 'Cambio de divisas';
+            const monLbl = esCambio ? `${r.fields.moneda_origen||'?'}→${r.fields.moneda_destino||'?'}` : (r.fields.moneda||'ARS');
+            const montoDisp = esCambio ? fmtM(r.fields.monto_origen||0, r.fields.moneda_origen||'ARS') : fmtM(r.fields.monto||0, r.fields.moneda||'ARS');
+            const colorMonto = esCambio ? 'var(--text-muted)' : (r.fields.tipo_de_movimiento==='Ingreso'?'var(--green)':'var(--red)');
+            return \`<tr>
+              <td class="mono">\${r.fields.fecha||''}</td>
+              <td>\${r.fields.concepto||'—'}</td>
+              <td><span class="tag tag-gray">\${esCambio?'Cambio':(r.fields.origen||'—')}</span></td>
+              <td><span class="tag \${esCambio?'tag-blue':r.fields.tipo_de_movimiento==='Ingreso'?'tag-green':'tag-red'}">\${esCambio?'Cambio de divisas':(r.fields.tipo_de_movimiento||'—')}</span></td>
+              <td style="font-size:11px;font-family:'DM Mono',monospace">\${monLbl}</td>
+              <td class="num mono" style="color:\${colorMonto}">\${montoDisp}</td>
+            </tr>\`;
+          }).join('')}
         </tbody>
       </table>
     </div>`;
 
-  // Chart evolutivo
   new Chart(document.getElementById('chartEvol'), {
     type: 'bar',
     data: {
@@ -669,20 +729,18 @@ function renderResumen() {
         { label: 'Balance', data: evolData.map(d=>d.bal), type: 'line', borderColor: '#1A1814', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#1A1814', tension: 0.3, order: 0, z: 10 }
       ]
     },
-    options: { responsive: true, plugins: { legend: { position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } }, scales: { y: { ticks: { callback: v => '$ ' + (v/1000000).toFixed(1) + 'M', font: { family: 'DM Mono', size: 11 } }, grid: { color: '#E8E4DC' } }, x: { ticks: { font: { family: 'DM Sans', size: 11 } }, grid: { display: false } } } }
+    options: { responsive: true, plugins: { legend: { position: 'top', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } }, scales: { y: { ticks: { callback: v => mn==='USD' ? 'U$D '+Math.round(v/1000)+'k' : '$ '+(v/1000000).toFixed(1)+'M', font: { family: 'DM Mono', size: 11 } }, grid: { color: '#E8E4DC' } }, x: { ticks: { font: { family: 'DM Sans', size: 11 } }, grid: { display: false } } } }
   });
 
-  // Torta 1 - ingresos vs egresos
   new Chart(document.getElementById('chartTorta1'), {
     type: 'doughnut',
     data: {
-      labels: ['Ingresos', 'Egresos'],
-      datasets: [{ data: [ingresosMes, egresosMes], backgroundColor: ['#9FE1CB', '#F09597'], borderWidth: 0, hoverOffset: 4 }]
+      labels: ['Ingresos ARS', 'Egresos ARS'],
+      datasets: [{ data: [ingARS, egARS], backgroundColor: ['#9FE1CB', '#F09597'], borderWidth: 0, hoverOffset: 4 }]
     },
     options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } } }
   });
 
-  // Torta 2 - egresos por origen
   const origenes = Object.keys(egresosPorOrigen);
   const colores = ['#B5D4F4','#F0957B','#9FE1CB','#FACB80','#C0DD97','#F4C0D1'];
   new Chart(document.getElementById('chartTorta2'), {
@@ -693,8 +751,6 @@ function renderResumen() {
     },
     options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { family: 'DM Sans', size: 12 }, boxWidth: 12 } } } }
   });
-
-
 }
 
 // --- OBRAS ---
@@ -704,27 +760,41 @@ function renderObras() {
 
   const html = `<div class="obras-grid">${obras.map(o => {
     const f = o.fields;
-    const ing = f.total_ingresos || 0;
-    const eg = f.total_egresos || 0;
-    const bal = f.total_balance || (ing - eg);
+    const nombre = f.nombre || '—';
     const cat = f.Categoría?.name || f.Categoría || '';
+    const movObra = DATA.dashboard.filter(r =>
+      r.fields.origen === 'Obras' &&
+      r.fields.obra_nombre === nombre &&
+      r.fields.tipo_de_movimiento !== 'Cambio de divisas'
+    );
+    const ingARS = movObra.filter(r=>r.fields.tipo_de_movimiento==='Ingreso'&&(r.fields.moneda||'ARS')==='ARS').reduce((s,r)=>s+(r.fields.monto||0),0);
+    const egARS  = movObra.filter(r=>r.fields.tipo_de_movimiento==='Egreso' &&(r.fields.moneda||'ARS')==='ARS').reduce((s,r)=>s+(r.fields.monto||0),0);
+    const balARS = ingARS - egARS;
+    const ingUSD = movObra.filter(r=>r.fields.tipo_de_movimiento==='Ingreso'&&r.fields.moneda==='USD').reduce((s,r)=>s+(r.fields.monto||0),0);
+    const egUSD  = movObra.filter(r=>r.fields.tipo_de_movimiento==='Egreso' &&r.fields.moneda==='USD').reduce((s,r)=>s+(r.fields.monto||0),0);
+    const balUSD = ingUSD - egUSD;
+    const hasUSD = ingUSD > 0 || egUSD > 0;
     return `<div class="obra-card" onclick="verObra('${o.id}')" style="cursor:pointer">
       <div style="min-height:48px;margin-bottom:8px">
-        <div class="obra-card-name">${f.nombre||'—'}</div>
+        <div class="obra-card-name">${nombre}</div>
       </div>
       ${cat?`<div style="margin-bottom:14px"><span class="tag tag-blue">${cat}</span></div>`:'<div style="margin-bottom:14px"></div>'}
-      <div style="background:${bal>=0?'#EEF8F2':'#FBEEEE'};border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:${bal>=0?'var(--green)':'var(--red)'}">Balance</div>
-        <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:${bal>=0?'var(--green)':'var(--red)'};">${fmt(bal)}</div>
+      <div style="background:${balARS>=0?'#EEF8F2':'#FBEEEE'};border-radius:8px;padding:10px 14px;margin-bottom:${hasUSD?'8':'12'}px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:${balARS>=0?'var(--green)':'var(--red)'}">Balance ARS</div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:500;color:${balARS>=0?'var(--green)':'var(--red)'};">${fmtM(balARS,'ARS')}</div>
       </div>
+      ${hasUSD?`<div style="background:${balUSD>=0?'#EEF4FB':'#FBEEEE'};border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:${balUSD>=0?'var(--blue)':'var(--red)'}">Balance USD</div>
+        <div style="font-family:'DM Mono',monospace;font-size:14px;font-weight:500;color:${balUSD>=0?'var(--blue)':'var(--red)'};">${fmtM(balUSD,'USD')}</div>
+      </div>`:''}
       <div class="obra-card-stats" style="grid-template-columns:1fr 1fr">
         <div class="obra-stat">
-          <div class="obra-stat-label">Ingresos</div>
-          <div class="obra-stat-value" style="color:var(--green);white-space:nowrap">${fmt(ing)}</div>
+          <div class="obra-stat-label">Ingresos ARS</div>
+          <div class="obra-stat-value" style="color:var(--green);white-space:nowrap">${fmtM(ingARS,'ARS')}</div>
         </div>
         <div class="obra-stat">
-          <div class="obra-stat-label">Egresos</div>
-          <div class="obra-stat-value" style="color:var(--red);white-space:nowrap">${fmt(eg)}</div>
+          <div class="obra-stat-label">Egresos ARS</div>
+          <div class="obra-stat-value" style="color:var(--red);white-space:nowrap">${fmtM(egARS,'ARS')}</div>
         </div>
       </div>
     </div>`;
@@ -995,19 +1065,19 @@ function exportarCSV() {
 function renderSueldos() {
   const meses = mesesAnteriores(3);
   const mov = DATA.dashboard.filter(r => r.fields.origen === 'Sueldos');
+  const movARS = mov.filter(r => !r.fields.moneda || r.fields.moneda === 'ARS');
+  const movUSD = mov.filter(r => r.fields.moneda === 'USD');
   const empleados = DATA.empleados;
+  const hayUSD = movUSD.length > 0;
 
-  // Total por mes
-  const totalPorMes = meses.map(m =>
-    mov.filter(r => r.fields.mes_anio === m)
-       .reduce((s,r) => s + (r.fields.monto||0), 0)
-  );
+  const totalARS = meses.map(m => movARS.filter(r=>r.fields.mes_anio===m).reduce((s,r)=>s+(r.fields.monto||0),0));
+  const totalUSD = meses.map(m => movUSD.filter(r=>r.fields.mes_anio===m).reduce((s,r)=>s+(r.fields.monto||0),0));
 
-  // Stats por mes
   document.getElementById('sueldo-stats').innerHTML = meses.map((m,i) => `
     <div class="stat-card">
       <div class="stat-label">${fmtMes(m)}</div>
-      <div class="stat-value red">${fmt(totalPorMes[i])}</div>
+      <div class="stat-value red">${fmt(totalARS[i])}</div>
+      ${hayUSD && totalUSD[i] ? `<div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--blue);margin-top:4px">${fmtM(totalUSD[i],'USD')}</div>` : ''}
     </div>`).join('');
 
   let html = `<div class="sueldo-table-wrap"><table><thead><tr>
@@ -1020,22 +1090,24 @@ function renderSueldos() {
     const rol = e.fields.Rol || '—';
     const empleadoId = e.id;
     const pagosMes = meses.map(m => {
-      const total = mov.filter(r => {
+      return movARS.filter(r => {
         if (r.fields.mes_anio !== m) return false;
         const linked = r.fields.empleado_id || [];
         return linked.some(l => (l.id || l) === empleadoId);
       }).reduce((s,r) => s + (r.fields.monto||0), 0);
-      return total;
     });
-    html += `<tr>
-      <td><div style="font-weight:500">${nombre}</div></td>
-      <td style="color:var(--text-muted);font-size:12px">${rol}</td>
-      ${pagosMes.map(p=>`<td class="num mono" style="color:${p>0?'var(--red)':'var(--text-faint)'}">${p>0?fmt(p):'—'}</td>`).join('')}
-    </tr>`;
+    if (!pagosMes.every(p => p === 0)) {
+      html += `<tr>
+        <td><div style="font-weight:500">${nombre}</div></td>
+        <td style="color:var(--text-muted);font-size:12px">${rol}</td>
+        ${pagosMes.map(p=>`<td class="num mono" style="color:${p>0?'var(--red)':'var(--text-faint)'}">${p>0?fmt(p):'—'}</td>`).join('')}
+      </tr>`;
+    }
   });
 
-  // Fila de totales
-  html += `</tbody><tfoot><tr><td>Total</td><td></td>${meses.map((m,i)=>`<td class="num">${fmt(totalPorMes[i])}</td>`).join('')}</tr></tfoot></table></div>`;
+  html += `</tbody><tfoot><tr><td>Total ARS</td><td></td>${meses.map((m,i)=>`<td class="num">${fmt(totalARS[i])}</td>`).join('')}</tr>`;
+  if (hayUSD) html += `<tr><td>Total USD</td><td></td>${meses.map((m,i)=>`<td class="num" style="color:var(--blue)">${totalUSD[i]>0?fmtM(totalUSD[i],'USD'):'—'}</td>`).join('')}</tr>`;
+  html += `</tfoot></table></div>`;
   document.getElementById('sueldo-table').innerHTML = html;
 }
 
@@ -1201,8 +1273,15 @@ function openFormMovimiento() {
   document.getElementById('mov-empleado').innerHTML =
     '<option value="">— Seleccionar empleado —</option>' +
     DATA.empleados.map(e => `<option value="${e.id}">${e.fields.nombre_apellido}</option>`).join('');
-  movOrigenChange(); movMonedaChange();
+  movTipoChange();
 }
+function movTipoChange() {
+  const esCambio = document.getElementById('mov-tipo').value === 'Cambio de divisas';
+  document.getElementById('mov-normal-fields').style.display = esCambio ? 'none' : '';
+  document.getElementById('mov-cambio-fields').style.display = esCambio ? '' : 'none';
+  if (!esCambio) { movOrigenChange(); movMonedaChange(); }
+}
+function setMonedaChart(m) { monedaChart = m; renderResumen(); }
 function movOrigenChange() {
   const v = document.getElementById('mov-origen').value;
   document.getElementById('mov-obra-group').style.display     = v === 'Obras'   ? 'block' : 'none';
@@ -1216,25 +1295,42 @@ async function guardarMovimiento() {
   const concepto = document.getElementById('mov-concepto').value.trim();
   const fecha    = document.getElementById('mov-fecha').value;
   const tipo     = document.getElementById('mov-tipo').value;
-  const origen   = document.getElementById('mov-origen').value;
-  const monto    = parseFloat(document.getElementById('mov-monto').value);
-  if (!concepto || !fecha || !tipo || !origen || !monto) {
-    showToast('Completá los campos obligatorios (*)', 'error'); return;
+  if (!concepto || !fecha || !tipo) { showToast('Completá los campos obligatorios (*)', 'error'); return; }
+
+  let fields;
+  if (tipo === 'Cambio de divisas') {
+    const mOrig     = document.getElementById('mov-moneda-origen').value;
+    const montoOrig = parseFloat(document.getElementById('mov-monto-origen').value);
+    const mDest     = document.getElementById('mov-moneda-destino').value;
+    const montoDest = parseFloat(document.getElementById('mov-monto-destino').value);
+    if (!montoOrig || !montoDest) { showToast('Completá los montos del cambio (*)', 'error'); return; }
+    if (mOrig === mDest) { showToast('La moneda de origen y destino no pueden ser iguales', 'error'); return; }
+    const tc     = parseFloat(document.getElementById('mov-tc-cambio').value) || null;
+    const medio  = document.getElementById('mov-medio').value;
+    const coment = document.getElementById('mov-comentario').value.trim();
+    fields = { concepto, fecha, tipo_de_movimiento: 'Cambio de divisas', moneda_origen: mOrig, monto_origen: montoOrig, moneda_destino: mDest, monto_destino: montoDest };
+    if (tc)     fields.tc           = tc;
+    if (medio)  fields.medio_de_pago = medio;
+    if (coment) fields.comentario   = coment;
+  } else {
+    const origen = document.getElementById('mov-origen').value;
+    const monto  = parseFloat(document.getElementById('mov-monto').value);
+    if (!origen || !monto) { showToast('Completá los campos obligatorios (*)', 'error'); return; }
+    const moneda = document.getElementById('mov-moneda').value;
+    const medio  = document.getElementById('mov-medio').value;
+    const coment = document.getElementById('mov-comentario').value.trim();
+    const obraId = document.getElementById('mov-obra').value;
+    const empId  = document.getElementById('mov-empleado').value;
+    const tc     = parseFloat(document.getElementById('mov-tc').value) || null;
+    fields = { concepto, fecha, tipo_de_movimiento: tipo, origen, monto, moneda };
+    if (medio)  fields.medio_de_pago = medio;
+    if (coment) fields.comentario    = coment;
+    if (obraId && origen === 'Obras')   fields.obra_id     = [obraId];
+    if (empId  && origen === 'Sueldos') fields.empleado_id = [empId];
+    if (tc && moneda === 'USD') fields.tc = tc;
   }
-  const moneda = document.getElementById('mov-moneda').value;
-  const medio  = document.getElementById('mov-medio').value;
-  const coment = document.getElementById('mov-comentario').value.trim();
-  const obraId = document.getElementById('mov-obra').value;
-  const empId  = document.getElementById('mov-empleado').value;
-  const tc     = parseFloat(document.getElementById('mov-tc').value) || null;
-  const fields = { concepto, fecha, tipo_de_movimiento: tipo, origen, monto, moneda };
-  if (medio)  fields.medio_de_pago = medio;
-  if (coment) fields.comentario    = coment;
-  if (obraId && origen === 'Obras')   fields.obra_id     = [obraId];
-  if (empId  && origen === 'Sueldos') fields.empleado_id = [empId];
-  if (tc && moneda === 'USD') fields.tc = tc;
   const ok = await submitForm('overlay-movimiento', TABLES.base, fields, 'Movimiento guardado');
-  if (ok) { document.getElementById('form-movimiento').reset(); movOrigenChange(); movMonedaChange(); }
+  if (ok) { document.getElementById('form-movimiento').reset(); movTipoChange(); }
 }
 
 // Obra
