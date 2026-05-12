@@ -1017,13 +1017,33 @@ function renderCargar() {
 // --- CARGA PRINCIPAL ---
 async function cargarTodo() {
   try {
-    const [dashboard, obras, empleados, proveedores, config] = await Promise.all([
+    const [dashboardRaw, baseRaw, obras, empleados, proveedores, config] = await Promise.all([
       fetchTable(TABLES.dashboard),
+      fetchTable(TABLES.base),
       fetchTable(TABLES.obras),
       fetchTable(TABLES.empleados),
       fetchTable(TABLES.proveedores),
       fetchTable(TABLES.config)
     ]);
+
+    // Combinar DASHBOARD + BASE sin duplicados (cada tabla tiene sus propios record IDs)
+    const movMap = new Map();
+    [...dashboardRaw, ...baseRaw].forEach(r => movMap.set(r.id, r));
+    const dashboard = Array.from(movMap.values());
+
+    // Normalizar campos que pueden faltar según la base
+    dashboard.forEach(r => {
+      // mes_anio: calcular desde fecha si no existe como campo fórmula
+      if (!r.fields.mes_anio && r.fields.fecha) {
+        r.fields.mes_anio = r.fields.fecha.substring(0, 7);
+      }
+      // obra_nombre: resolver desde la tabla OBRAS si solo hay obra_id
+      if (!r.fields.obra_nombre && r.fields.obra_id?.length) {
+        const obraId = r.fields.obra_id[0]?.id || r.fields.obra_id[0];
+        const obra = obras.find(o => o.id === obraId);
+        if (obra) r.fields.obra_nombre = obra.fields.nombre;
+      }
+    });
 
     DATA = { dashboard, obras, empleados, proveedores, config };
     renderCargar();
