@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARQTECH — Accesos</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F7F5F0;--surface:#FFFFFF;--border:#E8E4DC;--border-strong:#C8C4BC;
+  --text:#1A1814;--text-muted:#7A7670;--text-faint:#B0ACA4;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 40px;display:flex;align-items:center;height:56px}
+.logo{font-size:12px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted)}
+.logo span{color:var(--text)}
+main{max-width:720px;margin:0 auto;padding:48px 40px}
+h1{font-size:24px;font-weight:300;letter-spacing:-.02em;margin-bottom:6px}
+.sub{font-size:13px;color:var(--text-muted);margin-bottom:32px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 24px;display:flex;align-items:center;gap:16px;margin-bottom:12px}
+.card-meta{flex:1;min-width:0}
+.card-nombre{font-size:14px;font-weight:500;margin-bottom:5px}
+.card-url{font-family:'DM Mono',monospace;font-size:11px;color:var(--text-faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{display:inline-block;font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-right:6px}
+.tag-blue{background:#EEF4FB;color:#1B4F8A}
+.tag-gray{background:#F1EFE8;color:#5F5E5A}
+.actions{display:flex;gap:8px;flex-shrink:0}
+.btn{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;padding:7px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;transition:all .15s;text-decoration:none;display:inline-block}
+.btn-solid{background:var(--text);color:#fff;border:none}
+.btn-solid:hover{opacity:.8}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--text-muted)}
+.btn-outline:hover{border-color:var(--border-strong);color:var(--text)}
+.loading{text-align:center;padding:60px;font-size:13px;color:var(--text-muted)}
+.spinner{width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--text);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;font-size:13px;padding:10px 16px;border-radius:8px;opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.visible{opacity:1;transform:translateY(0)}
+@media(max-width:600px){
+  main{padding:32px 20px}
+  .card{flex-direction:column;align-items:flex-start;gap:12px}
+  .actions{width:100%}
+  .btn{flex:1;text-align:center}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span>ARQTECH</span>&ensp;<span style="font-weight:300;color:var(--text-faint)">/ accesos</span></div>
+</header>
+
+<main>
+  <h1>Accesos por estudio</h1>
+  <p class="sub">Links de acceso al dashboard de cada estudio activo. Se actualiza automáticamente al dar de alta nuevos estudios.</p>
+  <div id="lista"><div class="loading"><div class="spinner"></div>Cargando estudios...</div></div>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const PROXY  = 'https://wandering-sound-8f28.nicolasgmontaner.workers.dev';
+const ADMIN_BASE            = 'appyJgf4jNU7ce3SH';
+const ADMIN_ESTUDIOS_TABLE  = 'tblxxwwS6aUnjSGtC';
+
+function urlEstudio(e) {
+  if (e.paquete === 2) return 'https://ngmontaner91.github.io/mmcv';
+  return `https://arqtech-dashboard.pages.dev?estudio=${e.slug}`;
+}
+
+function copiar(texto) {
+  navigator.clipboard.writeText(texto).then(() => {
+    const t = document.getElementById('toast');
+    t.textContent = 'Link copiado';
+    t.classList.add('visible');
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.classList.remove('visible'), 2000);
+  });
+}
+
+async function cargar() {
+  try {
+    const formula = encodeURIComponent('{activo}=1');
+    const url = `${PROXY}/v0/${ADMIN_BASE}/${ADMIN_ESTUDIOS_TABLE}?filterByFormula=${formula}&fields[]=nombre&fields[]=slug&fields[]=paquete&sort[0][field]=nombre&sort[0][direction]=asc`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Error ${res.status}`);
+    const data = await res.json();
+    const estudios = (data.records || []).map(r => r.fields);
+
+    if (!estudios.length) {
+      document.getElementById('lista').innerHTML = '<div class="loading">No hay estudios activos.</div>';
+      return;
+    }
+
+    document.getElementById('lista').innerHTML = estudios.map(e => {
+      const link = urlEstudio(e);
+      const paqueteTag = e.paquete === 2
+        ? '<span class="tag tag-gray">Paquete 2 — Pagos</span>'
+        : '<span class="tag tag-blue">Paquete 1 — Dashboard</span>';
+      return `<div class="card">
+        <div class="card-meta">
+          <div class="card-nombre">${e.nombre || e.slug}</div>
+          <div style="margin-top:2px">${paqueteTag}</div>
+          <div class="card-url" style="margin-top:6px">${link}</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-outline" onclick="copiar('${link}')">Copiar link</button>
+          <a class="btn btn-solid" href="${link}" target="_blank">Abrir →</a>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('lista').innerHTML = `<div class="loading" style="color:#8A1B1B">Error al cargar: ${e.message}</div>`;
+  }
+}
+
+cargar();
+</script>
+</body>
+</html>
