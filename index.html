@@ -198,13 +198,19 @@ input:focus{outline:none;border-color:var(--border-strong)}
       <p class="section-title">Resumen general</p>
       <p class="section-sub" id="resumen-sub" style="margin-bottom:0">Cargando...</p>
     </div>
-    <select id="periodo-select" onchange="periodoResumen=this.value;renderResumen()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 32px 7px 12px;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer">
-      <option value="mes">Este mes</option>
-      <option value="3m">Últimos 3 meses</option>
-      <option value="6m">Últimos 6 meses</option>
-      <option value="anio">Este año</option>
-      <option value="todo">Todo</option>
-    </select>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;gap:4px" id="toggle-moneda-resumen">
+        <button class="chart-toggle active" onclick="setMonedaResumen('ARS')">ARS</button>
+        <button class="chart-toggle" onclick="setMonedaResumen('USD')">USD</button>
+      </div>
+      <select id="periodo-select" onchange="periodoResumen=this.value;renderResumen()" style="font-family:'DM Sans',sans-serif;font-size:13px;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 32px 7px 12px;appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237A7670' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer">
+        <option value="mes">Este mes</option>
+        <option value="3m">Últimos 3 meses</option>
+        <option value="6m">Últimos 6 meses</option>
+        <option value="anio">Este año</option>
+        <option value="todo">Todo</option>
+      </select>
+    </div>
   </div>
   <div id="resumen-content"><div class="loading-state"><div class="spinner"></div>Cargando datos...</div></div>
 </div>
@@ -652,10 +658,11 @@ const TABLES = {
   adicionales:      'ADICIONALES'
 };
 
-let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [], config: [] };
+let DATA = { dashboard: [], obras: [], empleados: [], proveedores: [], config: [], tcHoy: null };
 let currentSection = 'resumen';
 let periodoResumen = 'mes';
 let monedaChart = 'ARS';
+let monedaResumen = 'ARS';
 
 // Acepta ?estudio=slug (ej: mmcv, griso) o ?base=appXXX, o usa el default
 function getBaseId() {
@@ -789,6 +796,39 @@ function renderResumen() {
     egresosPorOrigen[o] = (egresosPorOrigen[o]||0) + (r.fields.monto||0);
   });
 
+  // Helpers unificados (usa campos pre-calculados si existen)
+  function getMontoUnificado(r, moneda) {
+    if (moneda === 'USD') return r.fields.monto_usd || (r.fields.moneda === 'USD' ? r.fields.monto : 0);
+    if (moneda === 'ARS') return r.fields.monto_ars || (r.fields.moneda === 'ARS' ? r.fields.monto : 0);
+    return r.fields.monto || 0;
+  }
+  function calcIngUnif(ns, moneda) {
+    return ns.filter(r=>r.fields.tipo_de_movimiento==='Ingreso').reduce((s,r)=>s+getMontoUnificado(r,moneda),0);
+  }
+  function calcEgUnif(ns, moneda) {
+    return ns.filter(r=>r.fields.tipo_de_movimiento==='Egreso').reduce((s,r)=>s+getMontoUnificado(r,moneda),0);
+  }
+
+  // Caja — stock total histórico (sin filtro de período)
+  const allMov = DATA.dashboard;
+  const allNorm   = allMov.filter(r=>r.fields.tipo_de_movimiento!=='Cambio de divisas');
+  const allCambios= allMov.filter(r=>r.fields.tipo_de_movimiento==='Cambio de divisas');
+  const cajaARS =
+    allNorm.filter(r=>r.fields.tipo_de_movimiento==='Ingreso'&&(r.fields.moneda||'ARS')==='ARS').reduce((s,r)=>s+(r.fields.monto||0),0)
+  - allNorm.filter(r=>r.fields.tipo_de_movimiento==='Egreso' &&(r.fields.moneda||'ARS')==='ARS').reduce((s,r)=>s+(r.fields.monto||0),0)
+  + allCambios.filter(r=>r.fields.moneda_destino==='ARS').reduce((s,r)=>s+(r.fields.monto_destino||0),0)
+  - allCambios.filter(r=>r.fields.moneda_origen ==='ARS').reduce((s,r)=>s+(r.fields.monto_origen||0),0);
+  const cajaUSD =
+    allNorm.filter(r=>r.fields.tipo_de_movimiento==='Ingreso'&&r.fields.moneda==='USD').reduce((s,r)=>s+(r.fields.monto||0),0)
+  - allNorm.filter(r=>r.fields.tipo_de_movimiento==='Egreso' &&r.fields.moneda==='USD').reduce((s,r)=>s+(r.fields.monto||0),0)
+  + allCambios.filter(r=>r.fields.moneda_destino==='USD').reduce((s,r)=>s+(r.fields.monto_destino||0),0)
+  - allCambios.filter(r=>r.fields.moneda_origen ==='USD').reduce((s,r)=>s+(r.fields.monto_origen||0),0);
+
+  // Valores unificados según monedaResumen
+  const ingUnif = calcIngUnif(normales, monedaResumen);
+  const egUnif  = calcEgUnif(normales, monedaResumen);
+  const balUnif = ingUnif - egUnif;
+
   // Evolutivo 6 meses — moneda seleccionada
   const meses6 = mesesAnteriores(5);
   const mn = monedaChart;
@@ -805,16 +845,29 @@ function renderResumen() {
 
   document.getElementById('resumen-sub').textContent = labelPeriodo(periodoResumen);
 
+  // Sincronizar estado visual del toggle de moneda
+  document.querySelectorAll('#toggle-moneda-resumen .chart-toggle').forEach(b => {
+    b.classList.toggle('active', b.textContent === monedaResumen);
+  });
+
   document.getElementById('resumen-content').innerHTML = `
-    <div class="stat-grid stat-grid-3" style="margin-bottom:8px">
-      <div class="stat-card"><div class="stat-label">Balance ARS</div><div class="stat-value ${balARS>=0?'green':'red'}">${fmtM(balARS,'ARS')}</div></div>
-      <div class="stat-card"><div class="stat-label">Ingresos ARS</div><div class="stat-value blue">${fmtM(ingARS,'ARS')}</div></div>
-      <div class="stat-card"><div class="stat-label">Egresos ARS</div><div class="stat-value red">${fmtM(egARS,'ARS')}</div></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:24px">
+      <div style="font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text-faint);margin-bottom:16px">Caja actual — stock total</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Pesos</div>
+          <div style="font-family:'DM Mono',monospace;font-size:22px;color:${cajaARS>=0?'var(--text)':'var(--red)'}">${fmtM(cajaARS,'ARS')}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Dólares</div>
+          <div style="font-family:'DM Mono',monospace;font-size:22px;color:${cajaUSD>=0?'var(--blue)':'var(--red)'}">${fmtM(cajaUSD,'USD')}</div>
+        </div>
+      </div>
     </div>
-    <div class="stat-grid stat-grid-3" style="margin-bottom:16px">
-      <div class="stat-card"><div class="stat-label">Balance USD</div><div class="stat-value ${balUSD>=0?'green':'red'}">${fmtM(balUSD,'USD')}</div></div>
-      <div class="stat-card"><div class="stat-label">Ingresos USD</div><div class="stat-value blue">${fmtM(ingUSD,'USD')}</div></div>
-      <div class="stat-card"><div class="stat-label">Egresos USD</div><div class="stat-value red">${fmtM(egUSD,'USD')}</div></div>
+    <div class="stat-grid stat-grid-3" style="margin-bottom:24px">
+      <div class="stat-card"><div class="stat-label">Balance ${monedaResumen}</div><div class="stat-value ${balUnif>=0?'green':'red'}">${fmtM(balUnif,monedaResumen)}</div></div>
+      <div class="stat-card"><div class="stat-label">Ingresos ${monedaResumen}</div><div class="stat-value blue">${fmtM(ingUnif,monedaResumen)}</div></div>
+      <div class="stat-card"><div class="stat-label">Egresos ${monedaResumen}</div><div class="stat-value red">${fmtM(egUnif,monedaResumen)}</div></div>
     </div>
     <div class="stat-grid" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:24px">
       <div class="stat-card"><div class="stat-label">Balance obras ARS</div><div class="stat-value ${balanceObras>=0?'green':'red'}">${fmt(balanceObras)}</div></div>
@@ -1355,6 +1408,11 @@ async function guardarCobroObra() {
   const fields = { fecha, tipo_de_movimiento: 'Ingreso', origen: 'Obras', obra_id: [obraId], monto, moneda };
   if (medio)  fields.medio_de_pago = medio;
   if (coment) fields.comentario    = coment;
+  const tcHoy1 = await getTCHoy();
+  if (tcHoy1) {
+    if (moneda === 'ARS') { fields.monto_ars = monto; fields.monto_usd = Math.round((monto / tcHoy1.promedio) * 100) / 100; fields.tc_aplicado = tcHoy1.promedio; }
+    else if (moneda === 'USD') { fields.monto_usd = monto; fields.monto_ars = Math.round(monto * tcHoy1.promedio); fields.tc_aplicado = tcHoy1.promedio; }
+  }
   const ok = await submitForm('overlay-cobro-obra', TABLES.base, fields, 'Cobro guardado');
   if (ok) document.getElementById('form-cobro-obra').reset();
 }
@@ -1371,6 +1429,11 @@ async function guardarPagoProveedor() {
   const fields  = { fecha, tipo_de_movimiento: 'Egreso', origen: 'Obras', obra_id: [obraId], proveedor_id: [provId], monto, moneda };
   if (medio)  fields.medio_de_pago = medio;
   if (coment) fields.comentario    = coment;
+  const tcHoy2 = await getTCHoy();
+  if (tcHoy2) {
+    if (moneda === 'ARS') { fields.monto_ars = monto; fields.monto_usd = Math.round((monto / tcHoy2.promedio) * 100) / 100; fields.tc_aplicado = tcHoy2.promedio; }
+    else if (moneda === 'USD') { fields.monto_usd = monto; fields.monto_ars = Math.round(monto * tcHoy2.promedio); fields.tc_aplicado = tcHoy2.promedio; }
+  }
   const ok = await submitForm('overlay-pago-proveedor', TABLES.base, fields, 'Pago guardado');
   if (ok) {
     document.getElementById('form-pago-proveedor').reset();
@@ -1389,6 +1452,11 @@ async function guardarSueldo() {
   const fields = { fecha, tipo_de_movimiento: 'Egreso', origen: 'Sueldos', empleado_id: [empId], monto, moneda };
   if (medio)  fields.medio_de_pago = medio;
   if (coment) fields.comentario    = coment;
+  const tcHoy3 = await getTCHoy();
+  if (tcHoy3) {
+    if (moneda === 'ARS') { fields.monto_ars = monto; fields.monto_usd = Math.round((monto / tcHoy3.promedio) * 100) / 100; fields.tc_aplicado = tcHoy3.promedio; }
+    else if (moneda === 'USD') { fields.monto_usd = monto; fields.monto_ars = Math.round(monto * tcHoy3.promedio); fields.tc_aplicado = tcHoy3.promedio; }
+  }
   const ok = await submitForm('overlay-sueldo', TABLES.base, fields, 'Sueldo guardado');
   if (ok) document.getElementById('form-sueldo').reset();
 }
@@ -1566,6 +1634,18 @@ function movTipoChange() {
   if (!esCambio) { movOrigenChange(); movMonedaChange(); }
 }
 function setMonedaChart(m) { monedaChart = m; renderResumen(); }
+function setMonedaResumen(m) { monedaResumen = m; renderResumen(); }
+
+async function getTCHoy() {
+  if (DATA.tcHoy) return DATA.tcHoy;
+  try {
+    const res = await fetch(`${PROXY}/admin/tc/hoy`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    DATA.tcHoy = data;
+    return data;
+  } catch { return null; }
+}
 function movOrigenChange() {
   const v = document.getElementById('mov-origen').value;
   document.getElementById('mov-obra-group').style.display     = v === 'Obras'   ? 'block' : 'none';
@@ -1612,6 +1692,11 @@ async function guardarMovimiento() {
     if (obraId && origen === 'Obras')   fields.obra_id     = [obraId];
     if (empId  && origen === 'Sueldos') fields.empleado_id = [empId];
     if (tc && moneda === 'USD') fields.tc = tc;
+    const tcHoy4 = await getTCHoy();
+    if (tcHoy4) {
+      if (moneda === 'ARS') { fields.monto_ars = monto; fields.monto_usd = Math.round((monto / tcHoy4.promedio) * 100) / 100; fields.tc_aplicado = tcHoy4.promedio; }
+      else if (moneda === 'USD') { fields.monto_usd = monto; fields.monto_ars = Math.round(monto * tcHoy4.promedio); fields.tc_aplicado = tcHoy4.promedio; }
+    }
   }
   const ok = await submitForm('overlay-movimiento', TABLES.base, fields, 'Movimiento guardado');
   if (ok) { document.getElementById('form-movimiento').reset(); movTipoChange(); }
